@@ -68,6 +68,19 @@ const App: React.FC = () => {
     }
   }, [gameState.story, speak]);
 
+  /**
+   * Primes the speech synthesis engine on iOS by speaking a silent utterance.
+   * This must be called from within a user-initiated event handler (e.g., a click).
+   */
+  const primeSpeechSynthesis = (voiceEnabled: boolean) => {
+    if ('speechSynthesis' in window && voiceEnabled) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(' '); // A space is more reliable than an empty string
+      utterance.volume = 0; // Make it silent
+      window.speechSynthesis.speak(utterance);
+    }
+  };
+
   const handleStart = (voiceEnabled: boolean, lang: Language, rate: number, model: AIModel) => {
     setLanguage(lang);
     setIsVoiceoverEnabled(voiceEnabled);
@@ -78,6 +91,9 @@ const App: React.FC = () => {
   };
 
   const handleClassSelect = async (selectedClass: PlayerClass) => {
+    // Prime the speech engine on user click to enable autoplay on iOS
+    primeSpeechSynthesis(isVoiceoverEnabled);
+
     setIsLoading(true);
     setPlayerClass(selectedClass);
     setCurrentScreen('game');
@@ -167,6 +183,9 @@ const App: React.FC = () => {
   };
 
   const handleLoad = (saveData: SaveData) => {
+    // Prime the speech engine on user click to enable autoplay on iOS
+    primeSpeechSynthesis(saveData.isVoiceoverEnabled);
+
     setGameState(saveData.gameState);
     setPlayerClass(saveData.playerClass);
     setLanguage(saveData.language);
