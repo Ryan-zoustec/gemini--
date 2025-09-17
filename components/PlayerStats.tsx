@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Item, EquipmentSlots, EquipmentSlot, Language } from '../types';
@@ -12,6 +14,7 @@ interface PlayerStatsProps {
   selectedItem: Item | null;
   onSelectItem: (item: Item | null) => void;
   language: Language;
+  playerClassName: string;
 }
 
 // --- Main Stat Icons ---
@@ -38,7 +41,7 @@ const EnergyIcon = () => <svg {...iconProps}><polygon points="13 2 3 14 12 14 11
 const DragonIcon = () => <svg {...iconProps}><path d="M22 12c-5 0-7 2-7 4s2 4 7 4c-1.5 2.5-4 4-7 4-5 0-7-4-7-8s2-8 7-8c3 0 5.5 1.5 7 4-5 0-7 2-7 4s2 4 7 4zM2 12c5 0 7-2 7-4s-2-4-7-4c1.5-2.5 4-4 7-4 5 0 7 4 7 8s-2 8-7 8c-3 0-5.5-1.5-7-4c5 0 7-2 7-4s-2-4-7-4z"></path></svg>;
 
 const getIconForItem = (item: Item | null): React.ReactElement => {
-    if (!item) return <GenericItemIcon />;
+    if (!item || !item.name) return <GenericItemIcon />;
     const name = item.name.toLowerCase();
     
     // Companion check first
@@ -61,24 +64,33 @@ const getIconForItem = (item: Item | null): React.ReactElement => {
     return <GenericItemIcon />;
 };
 
+// Class Icons
+const iconPropsClass = { className: "h-7 w-7 mr-3 text-cyan-400", strokeWidth: "1.5", fill: "none", strokeLinecap: "round", strokeLinejoin: "round"} as const;
+const KnightIconClass = () => <svg {...iconPropsClass} viewBox="0 0 24 24" stroke="currentColor"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>;
+const RogueIconClass = () => <svg {...iconPropsClass} viewBox="0 0 24 24" stroke="currentColor"><path d="M3 3l7 7-7 7 7-7-7-7z"></path><path d="M21 21l-7-7 7-7-7 7 7 7z"></path></svg>;
+const ScholarIconClass = () => <svg {...iconPropsClass} viewBox="0 0 24 24" stroke="currentColor"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v15H6.5A2.5 2.5 0 0 1 4 14.5v-10A2.5 2.5 0 0 1 6.5 2z"></path></svg>;
+const TricksterIconClass = () => <svg {...iconPropsClass} viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><path d="M9 9h.01"></path><path d="M15 9h.01"></path></svg>;
+
+const classIcons: { [key: string]: React.ReactElement } = {
+  'Knight': <KnightIconClass />, 'Rogue': <RogueIconClass />, 'Scholar': <ScholarIconClass />, 'Trickster': <TricksterIconClass />,
+  '騎士': <KnightIconClass />, '盜賊': <RogueIconClass />, '學者': <ScholarIconClass />, '詐欺師': <TricksterIconClass />,
+  'ナイト': <KnightIconClass />, '学者': <ScholarIconClass />, '盗賊': <RogueIconClass />, 'トリックスター': <TricksterIconClass />,
+  'Caballero': <KnightIconClass />, 'Pícaro': <RogueIconClass />, 'Erudito': <ScholarIconClass />, 'Embaucador': <TricksterIconClass />,
+  '기사': <KnightIconClass />, '도적': <RogueIconClass />, '학자': <ScholarIconClass />, '사기꾼': <TricksterIconClass />,
+};
+
 const EquipmentSlotComponent: React.FC<{
     slot: EquipmentSlot;
     item: Item | null;
     onMouseEnter: (e: React.MouseEvent<HTMLDivElement>, item: Item | null) => void;
     onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => void;
     onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
-    // FIX: Added language prop to fix "Cannot find name 'language'" error.
     language: Language;
 }> = ({ slot, item, onMouseEnter, onMouseLeave, onMouseMove, language }) => {
     
     const icons: Record<EquipmentSlot, React.ReactElement> = {
-        head: <HelmetIcon />,
-        body: <ArmorIcon />,
-        hands: <DaggerIcon />,
-        feet: <BootsIcon />,
-        back: <BackpackIcon />,
-        waist: <BeltIcon />,
-        companion: <CompanionHeartIcon />,
+        head: <HelmetIcon />, body: <ArmorIcon />, hands: <DaggerIcon />, feet: <BootsIcon />,
+        back: <BackpackIcon />, waist: <BeltIcon />, companion: <CompanionHeartIcon />,
     };
 
     const isCompanionSlot = slot === 'companion';
@@ -112,7 +124,7 @@ const EquipmentSlotComponent: React.FC<{
 };
 
 
-const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equipment, actionResult, selectedItem, onSelectItem, language }) => {
+const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equipment, actionResult, selectedItem, onSelectItem, language, playerClassName }) => {
   const maxHealth = 100;
   const healthPercentage = (health / maxHealth) * 100;
   const healthColor = healthPercentage > 60 ? 'bg-green-500' : healthPercentage > 30 ? 'bg-yellow-500' : 'bg-red-500';
@@ -166,7 +178,6 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
         slot={slot} 
         item={equipment[slot]}
         onMouseEnter={handleMouseEnter} 
-        // FIX: Passed language prop to EquipmentSlotComponent.
         language={language}
         {...commonMouseEventHandlers}
     />
@@ -198,6 +209,10 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
 
         {/* Equipment */}
         <div className="bg-slate-900/50 p-3 rounded-lg flex flex-col items-center space-y-2 border border-slate-700">
+            <div className="flex items-center justify-center mb-2 w-full border-b border-slate-700 pb-2">
+                {classIcons[playerClassName] || <KnightIconClass />}
+                <h3 className="text-2xl font-bold text-slate-200 tracking-wider">{playerClassName}</h3>
+            </div>
             {renderEquipmentSlot('companion')}
             <div className="flex gap-2">
                 {renderEquipmentSlot('head')}

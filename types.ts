@@ -1,4 +1,4 @@
-export type ItemType = 'equippable' | 'consumable' | 'quest';
+export type ItemType = 'equippable' | 'consumable' | 'non-consumable' | 'summon_companion';
 export type EquipmentSlot = 'head' | 'body' | 'hands' | 'feet' | 'back' | 'waist' | 'companion';
 export type Language = 'zh-TW' | 'en' | 'ja' | 'es' | 'ko';
 export type AIModel = 'gemini' | 'chatgpt';

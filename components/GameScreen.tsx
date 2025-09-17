@@ -97,6 +97,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
             selectedItem={selectedItem}
             onSelectItem={setSelectedItem}
             language={language}
+            playerClassName={playerClassName}
           />
         </div>
       </div>
