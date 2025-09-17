@@ -1,9 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Language, SaveData } from '../types';
+import { Language, SaveData, AIModel } from '../types';
 import { t } from '../constants';
 
 interface StartScreenProps {
-  onStart: (voiceEnabled: boolean, lang: Language, rate: number) => void;
+  onStart: (voiceEnabled: boolean, lang: Language, rate: number, aiModel: AIModel) => void;
   onLoad: (saveData: SaveData) => void;
 }
 
@@ -15,9 +15,15 @@ const languages: { code: Language; name: string }[] = [
     { code: 'ko', name: '한국어' },
 ];
 
+const aiModels: { code: AIModel; name: string }[] = [
+    { code: 'gemini', name: 'Gemini' },
+    { code: 'chatgpt', name: 'ChatGPT (Simulated)' },
+];
+
 const StartScreen: React.FC<StartScreenProps> = ({ onStart, onLoad }) => {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [language, setLanguage] = useState<Language>('zh-TW');
+  const [aiModel, setAiModel] = useState<AIModel>('gemini');
   const [rate, setRate] = useState(1);
   const [loadError, setLoadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,21 +70,38 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onLoad }) => {
         {t(language, 'introText')}
       </p>
 
-      <div className="max-w-xs mx-auto mb-6">
-        <select
-            id="language-select"
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as Language)}
-            className="w-full bg-slate-700 border border-slate-600 rounded-md px-4 py-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition"
-            aria-label="Select language"
-        >
-            {languages.map(lang => (
-                <option key={lang.code} value={lang.code}>{lang.name}</option>
-            ))}
-        </select>
+      <div className="max-w-xs mx-auto mb-4 grid grid-cols-1 gap-4">
+        <div>
+            <label htmlFor="language-select" className="block text-slate-300 mb-1 text-left">Language</label>
+            <select
+                id="language-select"
+                value={language}
+                onChange={(e) => setLanguage(e.target.value as Language)}
+                className="w-full bg-slate-700 border border-slate-600 rounded-md px-4 py-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition"
+                aria-label="Select language"
+            >
+                {languages.map(lang => (
+                    <option key={lang.code} value={lang.code}>{lang.name}</option>
+                ))}
+            </select>
+        </div>
+        <div>
+            <label htmlFor="ai-model-select" className="block text-slate-300 mb-1 text-left">AI Engine</label>
+            <select
+                id="ai-model-select"
+                value={aiModel}
+                onChange={(e) => setAiModel(e.target.value as AIModel)}
+                className="w-full bg-slate-700 border border-slate-600 rounded-md px-4 py-2 text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition"
+                aria-label="Select AI Model"
+            >
+                {aiModels.map(model => (
+                    <option key={model.code} value={model.code}>{model.name}</option>
+                ))}
+            </select>
+        </div>
       </div>
 
-       <div className="flex justify-center items-center gap-4 mb-4">
+       <div className="flex justify-center items-center gap-4 my-6">
         <input
           type="checkbox"
           id="voice-toggle"
@@ -112,7 +135,7 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart, onLoad }) => {
 
       <div className="flex flex-col items-center gap-4">
         <button
-            onClick={() => onStart(voiceEnabled, language, rate)}
+            onClick={() => onStart(voiceEnabled, language, rate, aiModel)}
             className="bg-cyan-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-cyan-500 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-cyan-500/20 text-xl"
         >
             {t(language, 'startAdventure')}

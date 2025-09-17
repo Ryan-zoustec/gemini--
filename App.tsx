@@ -3,8 +3,8 @@ import StartScreen from './components/StartScreen';
 import CharacterCreationScreen from './components/CharacterCreationScreen';
 import GameScreen from './components/GameScreen';
 import GameOverScreen from './components/GameOverScreen';
-import { GameState, PlayerClass, SaveData, Language, Item, EquipmentSlot } from './types';
-import { startNewGame, processPlayerAction } from './services/geminiService';
+import { GameState, PlayerClass, SaveData, Language, Item, AIModel } from './types';
+import { startNewGame, processPlayerAction } from './services/aiService';
 import { ALL_PLAYER_CLASSES, TRICKSTER_CLASS, INITIAL_GAME_STATE } from './constants';
 
 type Screen = 'start' | 'character' | 'game' | 'gameover';
@@ -18,6 +18,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('zh-TW');
   const [isVoiceoverEnabled, setIsVoiceoverEnabled] = useState(false);
   const [speechRate, setSpeechRate] = useState(1);
+  const [aiModel, setAiModel] = useState<AIModel>('gemini');
   
   // Use localStorage to track wins for unlocking Trickster
   const hasWonGame = () => localStorage.getItem('hasWonGame') === 'true';
@@ -67,10 +68,11 @@ const App: React.FC = () => {
     }
   }, [gameState.story, speak]);
 
-  const handleStart = (voiceEnabled: boolean, lang: Language, rate: number) => {
+  const handleStart = (voiceEnabled: boolean, lang: Language, rate: number, model: AIModel) => {
     setLanguage(lang);
     setIsVoiceoverEnabled(voiceEnabled);
     setSpeechRate(rate);
+    setAiModel(model);
     setCurrentScreen('character');
     setError(null);
   };
@@ -80,7 +82,7 @@ const App: React.FC = () => {
     setPlayerClass(selectedClass);
     setCurrentScreen('game');
     try {
-      const newGameState = await startNewGame(selectedClass, language);
+      const newGameState = await startNewGame(selectedClass, language, aiModel);
       setGameState({
         ...INITIAL_GAME_STATE, // Start fresh
         ...newGameState,
@@ -112,7 +114,7 @@ const App: React.FC = () => {
     }
 
     try {
-      const response = await processPlayerAction(tempGameState, playerClass, action, selectedItem, language);
+      const response = await processPlayerAction(tempGameState, playerClass, action, selectedItem, language, aiModel);
       
       const actionLog = `\n\n> ${action}${selectedItem ? ` (${selectedItem.name})` : ''}\n\n`;
       const newStory = `${gameState.story}${actionLog}${response.story}`;
@@ -153,6 +155,7 @@ const App: React.FC = () => {
       language,
       isVoiceoverEnabled,
       speechRate,
+      aiModel,
     };
     const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -169,6 +172,7 @@ const App: React.FC = () => {
     setLanguage(saveData.language);
     setIsVoiceoverEnabled(saveData.isVoiceoverEnabled);
     setSpeechRate(saveData.speechRate);
+    setAiModel(saveData.aiModel || 'gemini');
     setClasses(getInitialClasses(saveData.language)); // Make sure to update classes on load
     setCurrentScreen('game');
     setError(null);

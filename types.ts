@@ -1,6 +1,7 @@
 export type ItemType = 'equippable' | 'consumable' | 'quest';
 export type EquipmentSlot = 'head' | 'body' | 'hands' | 'feet' | 'back' | 'waist' | 'companion';
 export type Language = 'zh-TW' | 'en' | 'ja' | 'es' | 'ko';
+export type AIModel = 'gemini' | 'chatgpt';
 
 export interface Item {
   name: string;
@@ -72,4 +73,5 @@ export interface SaveData {
   language: Language;
   isVoiceoverEnabled: boolean;
   speechRate: number;
+  aiModel: AIModel;
 }

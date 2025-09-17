@@ -91,7 +91,7 @@ const CharacterCreationScreen: React.FC<CharacterCreationScreenProps> = ({ class
                 {classIcons[playerClass.name] || <KnightIcon />}
                 <h2 className="text-2xl font-bold text-slate-200 mb-2">{playerClass.name}</h2>
             </div>
-            <p className="text-slate-400 text-sm mb-4 h-28 overflow-hidden">{playerClass.description}</p>
+            <p className="text-slate-400 text-sm mb-4 min-h-[7rem]">{playerClass.description}</p>
             <div className="text-left text-xs text-slate-300 bg-slate-900/60 p-3 rounded-md h-24">
                 <h4 className="font-bold text-cyan-400 mb-1">{t(language, 'startingEquipment')}</h4>
                 <p>{getStartingItems(playerClass)}</p>
