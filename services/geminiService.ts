@@ -1,6 +1,7 @@
+// FIX: Use GoogleGenAI instead of the deprecated GoogleGenerativeAI.
 import { GoogleGenAI } from "@google/genai";
-import { GameState, GameUpdateResponse, Item, EquipmentSlots } from '../types';
-import { SYSTEM_INSTRUCTION, RESPONSE_SCHEMA } from '../constants';
+import { GameState, GameUpdateResponse, Item, EquipmentSlots, Language } from '../types';
+import { SYSTEM_INSTRUCTIONS, RESPONSE_SCHEMAS } from '../constants';
 
 if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable is not set.");
@@ -10,43 +11,43 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 function formatEquipment(equipment: EquipmentSlots): string {
     return Object.entries(equipment)
-        .map(([slot, item]) => `  - ${slot}: ${item ? item.name : '空'}`)
+        .map(([slot, item]) => `  - ${slot}: ${item ? item.name : 'Empty'}`)
         .join('\n');
 }
 
 function buildPrompt(gameState: GameState, playerAction: string, selectedItem: Item | null) {
-    const itemContext = selectedItem ? `\n玩家同時使用了物品：「${selectedItem.name}」。請根據此物品的特性來影響行動的結果。` : '';
+    const itemContext = selectedItem ? `\nThe player also used the item: "${selectedItem.name}". Please factor in the properties of this item on the action's outcome.` : '';
     
     const plotTwistInstruction = gameState.turnCount >= 5
-        ? `\n\n**系統提示：** 遊戲節奏需要變化。請立即觸發一個重大的「情節轉折」事件。`
+        ? `\n\n**SYSTEM PROMPT:** The game's pacing needs a shift. Trigger a major "plot twist" event now.`
         : '';
 
     const context = `
-        這是目前的情況：
-        - 故事進展： "${gameState.story}"
-        - 玩家生命值： ${gameState.health}/100
-        - 玩家幸運值： ${gameState.luck}/100
-        - 玩家裝備：
+        This is the current situation:
+        - Story Progress: "${gameState.story}"
+        - Player Health: ${gameState.health}/100
+        - Player Luck: ${gameState.luck}/100
+        - Player Equipment:
 ${formatEquipment(gameState.equipment)}
-        - 玩家物品欄： [${gameState.inventory.map(item => item.name).join(', ')}]
+        - Player Inventory: [${gameState.inventory.map(item => item.name).join(', ')}]
 
-        玩家的行動是： "${playerAction}"${itemContext}${plotTwistInstruction}
+        The player's action is: "${playerAction}"${itemContext}${plotTwistInstruction}
 
-        產生冒險的下一步。
+        Generate the next step of the adventure.
     `;
     return context;
 }
 
-export async function getGameUpdate(gameState: GameState, playerAction:string, selectedItem: Item | null): Promise<GameUpdateResponse> {
+export async function getGameUpdate(gameState: GameState, playerAction:string, selectedItem: Item | null, language: Language): Promise<GameUpdateResponse> {
     const prompt = buildPrompt(gameState, playerAction, selectedItem);
     
     const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
-            systemInstruction: SYSTEM_INSTRUCTION,
+            systemInstruction: SYSTEM_INSTRUCTIONS[language],
             responseMimeType: "application/json",
-            responseSchema: RESPONSE_SCHEMA,
+            responseSchema: RESPONSE_SCHEMAS[language],
         },
     });
 

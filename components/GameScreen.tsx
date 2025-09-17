@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { GameState, Item, EquipmentSlot } from '../types';
+import { GameState, Item, EquipmentSlot, Language } from '../types';
 import PlayerStats from './PlayerStats';
 import LoadingIcon from './LoadingIcon';
+import { t } from '../constants';
 
 interface EquipmentChangePayload {
     action: 'equip' | 'unequip';
@@ -16,9 +17,10 @@ interface GameScreenProps {
   onSubmitAction: (action: string, selectedItem: Item | null) => void;
   onEquipmentChange: (payload: EquipmentChangePayload) => void;
   actionResult: string;
+  language: Language;
 }
 
-const GameScreen: React.FC<GameScreenProps> = ({ gameState, isLoading, error, onSubmitAction, onEquipmentChange, actionResult }) => {
+const GameScreen: React.FC<GameScreenProps> = ({ gameState, isLoading, error, onSubmitAction, onEquipmentChange, actionResult, language }) => {
   const [userInput, setUserInput] = useState('');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const storyEndRef = useRef<HTMLDivElement>(null);
@@ -49,7 +51,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameState, isLoading, error, on
 
   return (
     <div className="w-full max-w-4xl mx-auto h-[85vh] max-h-[900px] flex flex-col bg-slate-800 rounded-lg p-6 shadow-lg border border-slate-700">
-        <h1 className="text-3xl font-bold text-cyan-400 mb-4 border-b-2 border-slate-700 pb-2">你的任務</h1>
+        <h1 className="text-3xl font-bold text-cyan-400 mb-4 border-b-2 border-slate-700 pb-2">{t(language, 'yourQuest')}</h1>
         
         <PlayerStats 
           health={gameState.health}
@@ -60,13 +62,14 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameState, isLoading, error, on
           onEquipmentChange={onEquipmentChange}
           selectedItem={selectedItem}
           onSelectItem={setSelectedItem}
+          language={language}
         />
 
         <div className="flex-grow my-4 overflow-y-auto pr-2 bg-slate-900/50 rounded-md p-3">
           {isLoading && !gameState.story ? (
             <div className="flex flex-col items-center justify-center h-full text-slate-400">
                 <LoadingIcon />
-                <p className="mt-2">正在構築世界...</p>
+                <p className="mt-2">{t(language, 'buildingWorld')}</p>
             </div>
           ) : (
             <p className="whitespace-pre-wrap text-slate-300 leading-relaxed">
@@ -99,7 +102,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameState, isLoading, error, on
             type="text"
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
-            placeholder={isLoading ? "等待命運的裁決..." : "你該怎麼做？"}
+            placeholder={isLoading ? t(language, 'waitingForFate') : t(language, 'whatToDo')}
             disabled={isLoading}
             className="flex-grow bg-slate-700 border border-slate-600 rounded-md px-4 py-2 focus:ring-2 focus:ring-cyan-500 focus:outline-none transition disabled:opacity-50"
           />
@@ -108,7 +111,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameState, isLoading, error, on
             disabled={isLoading}
             className="bg-cyan-600 text-white font-bold px-6 py-2 rounded-md hover:bg-cyan-500 transition disabled:bg-slate-500 disabled:cursor-not-allowed"
           >
-            執行
+            {t(language, 'submit')}
           </button>
         </form>
     </div>

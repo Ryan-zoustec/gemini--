@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Item, EquipmentSlots, EquipmentSlot } from '../types';
+import { Item, EquipmentSlots, EquipmentSlot, Language } from '../types';
+import { t } from '../constants';
 
 interface EquipmentChangePayload {
     action: 'equip' | 'unequip';
@@ -17,6 +18,7 @@ interface PlayerStatsProps {
   onEquipmentChange: (payload: EquipmentChangePayload) => void;
   selectedItem: Item | null;
   onSelectItem: (item: Item | null) => void;
+  language: Language;
 }
 
 // --- Main Stat Icons ---
@@ -50,23 +52,24 @@ const getIconForItem = (item: Item | null): React.ReactElement => {
     const type = item.type;
     const slot = item.slot;
 
+    // Universal keywords
     if (slot === 'companion') {
-        if (name.includes('犬')) return <GuardianIcon />;
-        if (name.includes('梟')) return <PerceptionIcon />;
-        if (name.includes('精靈')) return <EnergyIcon />;
+        if (name.includes('hound') || name.includes('犬')) return <GuardianIcon />;
+        if (name.includes('owl') || name.includes('梟')) return <PerceptionIcon />;
+        if (name.includes('sprite') || name.includes('精靈')) return <EnergyIcon />;
         return <CompanionHeartIcon />;
     }
 
-    if (slot === 'head' || name.includes('頭盔') || name.includes('帽')) return <HelmetIcon />;
-    if (slot === 'body' || name.includes('甲') || name.includes('袍')) return <ArmorIcon />;
-    if (slot === 'hands' || name.includes('匕首') || name.includes('劍') || name.includes('刀')) return <DaggerIcon />;
-    if (slot === 'feet' || name.includes('靴')) return <BootsIcon />;
-    if (slot === 'back' || name.includes('背包') || name.includes('披風')) return <BackpackIcon />;
-    if (slot === 'waist' || name.includes('腰帶')) return <BeltIcon />;
+    if (slot === 'head' || name.includes('helmet') || name.includes('頭盔') || name.includes('hat') || name.includes('帽')) return <HelmetIcon />;
+    if (slot === 'body' || name.includes('armor') || name.includes('甲') || name.includes('robe') || name.includes('袍')) return <ArmorIcon />;
+    if (slot === 'hands' || name.includes('dagger') || name.includes('匕首') || name.includes('sword') || name.includes('劍') || name.includes('blade') || name.includes('刀')) return <DaggerIcon />;
+    if (slot === 'feet' || name.includes('boots') || name.includes('靴')) return <BootsIcon />;
+    if (slot === 'back' || name.includes('pack') || name.includes('背包') || name.includes('cloak') || name.includes('披風')) return <BackpackIcon />;
+    if (slot === 'waist' || name.includes('belt') || name.includes('腰帶')) return <BeltIcon />;
 
-    if (name.includes('地圖')) return <MapIcon />;
-    if (name.includes('藥水') || name.includes('藥劑') || name.includes('瓶')) return <PotionIcon />;
-    if (name.includes('鑰匙')) return <KeyIcon />;
+    if (name.includes('map') || name.includes('地圖')) return <MapIcon />;
+    if (name.includes('potion') || name.includes('藥水') || name.includes('elixir') || name.includes('藥劑') || name.includes('bottle') || name.includes('瓶')) return <PotionIcon />;
+    if (name.includes('key') || name.includes('鑰匙')) return <KeyIcon />;
     
     return <GenericItemIcon />;
 };
@@ -74,11 +77,12 @@ const getIconForItem = (item: Item | null): React.ReactElement => {
 const EquipmentSlotComponent: React.FC<{
     slot: EquipmentSlot;
     item: Item | null;
+    slotName: string;
     onDrop: (e: React.DragEvent<HTMLDivElement>, targetSlot: EquipmentSlot) => void;
     onMouseEnter: (e: React.MouseEvent<HTMLDivElement>, item: Item | null) => void;
     onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => void;
     onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
-}> = ({ slot, item, onDrop, onMouseEnter, onMouseLeave, onMouseMove }) => {
+}> = ({ slot, item, slotName, onDrop, onMouseEnter, onMouseLeave, onMouseMove }) => {
     const [isOver, setIsOver] = useState(false);
     
     const icons: Record<EquipmentSlot, React.ReactElement> = {
@@ -113,15 +117,20 @@ const EquipmentSlotComponent: React.FC<{
         e.dataTransfer.setData("application/json", JSON.stringify(payload));
     };
 
-    const baseClasses = "h-16 w-16 bg-slate-700/50 rounded-lg flex items-center justify-center border-2 border-dashed transition-colors";
+    const isCompanionSlot = slot === 'companion';
+    const baseClasses = `bg-slate-700/50 rounded-lg flex items-center justify-center border-2 border-dashed transition-colors relative p-1`;
+    const sizeClasses = isCompanionSlot ? "h-24 w-24" : "h-20 w-20";
     const stateClasses = isOver ? "border-cyan-400 bg-slate-600" : item ? "border-slate-500" : "border-slate-600";
+    
+    const slotNamePosition = isCompanionSlot ? 'top-2 left-0 right-0 text-center' : 'top-1 left-2 text-left';
+    
     const content = item ? (
-      <div className="flex flex-col items-center text-center text-xs p-1">
+      <div className={`flex flex-col items-center text-center text-xs justify-center h-full ${isCompanionSlot ? 'pt-2' : ''}`}>
         {getIconForItem(item)}
-        <span className="truncate text-slate-300 w-full">{item.name}</span>
+        <span className="text-slate-300 w-full break-words leading-tight mt-1 px-1">{item.name}</span>
       </div>
     ) : (
-      <div className="text-slate-500">{icons[slot]}</div>
+      <div className={`text-slate-500 ${isCompanionSlot ? 'pt-3' : ''}`}>{icons[slot]}</div>
     );
 
     return (
@@ -134,17 +143,20 @@ const EquipmentSlotComponent: React.FC<{
             onMouseEnter={(e) => onMouseEnter(e, item)}
             onMouseLeave={onMouseLeave}
             onMouseMove={onMouseMove}
-            className={`${baseClasses} ${stateClasses} ${item ? 'cursor-grab' : ''} ${slot === 'companion' ? 'rounded-full' : ''}`}
+            className={`${baseClasses} ${sizeClasses} ${stateClasses} ${item ? 'cursor-grab' : ''} ${isCompanionSlot ? 'rounded-full' : ''}`}
         >
+            <span className={`absolute text-xs text-slate-400 font-semibold ${slotNamePosition}`}>{slotName}</span>
             {content}
         </div>
     );
 };
 
 
-const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equipment, actionResult, onEquipmentChange, selectedItem, onSelectItem }) => {
-  const healthColor = health > 60 ? 'bg-green-500' : health > 30 ? 'bg-yellow-500' : 'bg-red-500';
-  const isHealthLow = health <= 30;
+const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equipment, actionResult, onEquipmentChange, selectedItem, onSelectItem, language }) => {
+  const maxHealth = 100;
+  const healthPercentage = (health / maxHealth) * 100;
+  const healthColor = healthPercentage > 60 ? 'bg-green-500' : healthPercentage > 30 ? 'bg-yellow-500' : 'bg-red-500';
+  const isHealthLow = healthPercentage <= 30;
 
   const [luckAnim, setLuckAnim] = useState('');
   const [inventoryAnim, setInventoryAnim] = useState('');
@@ -213,21 +225,38 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
     onMouseMove: handleMouseMove,
   };
 
+  const renderEquipmentSlot = (slot: EquipmentSlot) => (
+    <EquipmentSlotComponent 
+        slot={slot} 
+        item={equipment[slot]}
+        slotName={t(language, `slot_${slot}`)}
+        onDrop={(e) => handleEquipmentDrop(e, slot)} 
+        onMouseEnter={handleMouseEnter} 
+        {...commonMouseEventHandlers}
+    />
+  );
+
   return (
     <div className="space-y-3 text-sm">
       <div className="grid grid-cols-2 gap-3">
         {/* Health and Luck bars */}
         <div className="bg-slate-900/50 p-2 rounded-md">
-          <div className="flex items-center mb-1">
-              <HealthIcon isLow={isHealthLow} />
-              <span className="font-bold text-slate-300">生命值</span>
+          <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center">
+                <HealthIcon isLow={isHealthLow} />
+                <span className="font-bold text-slate-300">{t(language, 'health')}</span>
+              </div>
+              <span className="font-mono text-sm text-slate-300">{health}/{maxHealth}</span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-3.5"><div className={`h-3.5 rounded-full transition-all duration-500 ${healthColor}`} style={{ width: `${health}%` }}></div></div>
+          <div className="w-full bg-slate-700 rounded-full h-3.5"><div className={`h-3.5 rounded-full transition-all duration-500 ${healthColor}`} style={{ width: `${healthPercentage}%` }}></div></div>
         </div>
         <div className={`bg-slate-900/50 p-2 rounded-md ${luckAnim}`}>
-          <div className="flex items-center mb-1">
-              <LuckIcon />
-              <span className="font-bold text-slate-300">幸運值</span>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center">
+                <LuckIcon />
+                <span className="font-bold text-slate-300">{t(language, 'luck')}</span>
+            </div>
+             <span className="font-mono text-sm text-slate-300">{luck}/100</span>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-3.5"><div className="h-3.5 rounded-full transition-all duration-500 bg-green-400" style={{ width: `${luck}%` }}></div></div>
         </div>
@@ -236,17 +265,17 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
       <div className="grid grid-cols-3 gap-3">
         {/* Equipment */}
         <div className="col-span-1 bg-slate-900/50 p-2 rounded-md flex flex-col items-center space-y-2">
-            <EquipmentSlotComponent slot="companion" item={equipment.companion} onDrop={(e) => handleEquipmentDrop(e, 'companion')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>
+            {renderEquipmentSlot('companion')}
             <div className="w-4/5 border-t border-slate-700 my-1"></div>
-            <EquipmentSlotComponent slot="head" item={equipment.head} onDrop={(e) => handleEquipmentDrop(e, 'head')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>
+            {renderEquipmentSlot('head')}
             <div className="flex gap-2">
-                <EquipmentSlotComponent slot="hands" item={equipment.hands} onDrop={(e) => handleEquipmentDrop(e, 'hands')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>
-                <EquipmentSlotComponent slot="body" item={equipment.body} onDrop={(e) => handleEquipmentDrop(e, 'body')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>
-                <EquipmentSlotComponent slot="back" item={equipment.back} onDrop={(e) => handleEquipmentDrop(e, 'back')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>
+                {renderEquipmentSlot('hands')}
+                {renderEquipmentSlot('body')}
+                {renderEquipmentSlot('back')}
             </div>
             <div className="flex gap-2">
-                <EquipmentSlotComponent slot="waist" item={equipment.waist} onDrop={(e) => handleEquipmentDrop(e, 'waist')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>
-                <EquipmentSlotComponent slot="feet" item={equipment.feet} onDrop={(e) => handleEquipmentDrop(e, 'feet')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>
+                {renderEquipmentSlot('waist')}
+                {renderEquipmentSlot('feet')}
             </div>
         </div>
 
@@ -258,7 +287,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
         >
           <div className="flex items-center mb-2">
               <InventoryIcon />
-              <span className="font-bold text-slate-300 ml-2">物品欄</span>
+              <span className="font-bold text-slate-300 ml-2">{t(language, 'inventory')}</span>
           </div>
           <div className="flex flex-wrap gap-2 min-h-[10rem]">
             {inventory.length > 0 ? (
@@ -278,7 +307,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
                 </div>
               ))
             ) : (
-              <span className="text-slate-500 italic text-center w-full self-center">你的口袋空空如也。</span>
+              <span className="text-slate-500 italic text-center w-full self-center">{t(language, 'yourPocketsAreEmpty')}</span>
             )}
           </div>
         </div>
@@ -292,7 +321,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
               pointerEvents: 'none',
             }}
           >
-            <h4 className="font-bold text-cyan-400 mb-1 border-b border-slate-700 pb-1">物品描述</h4>
+            <h4 className="font-bold text-cyan-400 mb-1 border-b border-slate-700 pb-1">{t(language, 'itemDescription')}</h4>
             <p className="mt-2 text-slate-300">{tooltip.content}</p>
           </div>,
           document.body

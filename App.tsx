@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GameState, Item, EquipmentSlot, PlayerClass } from './types';
-import { INITIAL_GAME_STATE, PLAYER_CLASSES } from './constants';
+import { GameState, Item, EquipmentSlot, PlayerClass, Language } from './types';
+import { INITIAL_GAME_STATE, PLAYER_CLASSES_BY_LANG, t } from './constants';
 import { getGameUpdate } from './services/geminiService';
 import StartScreen from './components/StartScreen';
 import GameScreen from './components/GameScreen';
@@ -24,6 +24,8 @@ function App() {
   const [isTakingDamage, setIsTakingDamage] = useState<boolean>(false);
   const [isAudioEnabled, setIsAudioEnabled] = useState<boolean>(false);
   const [isVoiceoverEnabled, setIsVoiceoverEnabled] = useState<boolean>(false);
+  const [language, setLanguage] = useState<Language>('zh-TW');
+  const [speechRate, setSpeechRate] = useState<number>(1);
 
   const audioRef = useRef<{
     audioMap: { [key: string]: HTMLAudioElement };
@@ -39,21 +41,21 @@ function App() {
     const loadVoices = () => {
       const voices = window.speechSynthesis.getVoices();
       if (voices.length > 0) {
-        // Prefer Google voices for zh-TW, they often sound more natural
-        const twGoogleVoice = voices.find(voice => voice.lang === 'zh-TW' && voice.name.includes('Google'));
-        ttsVoiceRef.current = twGoogleVoice || voices.find(voice => voice.lang === 'zh-TW') || null;
+        const preferredVoice = 
+            voices.find(voice => voice.lang === language && voice.name.includes('Google')) || 
+            voices.find(voice => voice.lang === language);
+        ttsVoiceRef.current = preferredVoice || null;
       }
     };
 
-    // Voices are loaded asynchronously
     window.speechSynthesis.onvoiceschanged = loadVoices;
-    loadVoices(); // Initial attempt in case they are already loaded
+    loadVoices();
 
     return () => {
       window.speechSynthesis.onvoiceschanged = null;
-      window.speechSynthesis.cancel(); // Cleanup on unmount
+      window.speechSynthesis.cancel();
     };
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     // Pre-create all audio elements for reliability
@@ -176,23 +178,24 @@ function App() {
 
     window.speechSynthesis.cancel(); // Stop any previous speech immediately
 
+    // FIX: Corrected typo from SpeechSynthesisUtterterance to SpeechSynthesisUtterance.
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'zh-TW';
+    utterance.lang = language;
     if (ttsVoiceRef.current) {
       utterance.voice = ttsVoiceRef.current;
     }
-    utterance.rate = 0.95; // Slightly slower for a more dramatic storytelling feel
+    utterance.rate = speechRate;
     utterance.pitch = 1.0; 
 
     window.speechSynthesis.speak(utterance);
-  }, [isVoiceoverEnabled]);
+  }, [isVoiceoverEnabled, language, speechRate]);
 
 
-  const processAction = useCallback(async (action: string, currentState: GameState, selectedItem: Item | null) => {
+  const processAction = useCallback(async (action: string, currentState: GameState, selectedItem: Item | null, lang: Language) => {
     setIsLoading(true);
     setError(null);
     try {
-      const gameUpdate = await getGameUpdate(currentState, action, selectedItem);
+      const gameUpdate = await getGameUpdate(currentState, action, selectedItem, lang);
       
       speakStory(gameUpdate.story);
 
@@ -214,7 +217,7 @@ function App() {
 
     } catch (err) {
       console.error(err);
-      setError("一股遠古的邪惡力量阻礙了我們的連接。請再試一次。");
+      setError(t(lang, 'connectionError'));
     } finally {
       setIsLoading(false);
     }
@@ -251,8 +254,10 @@ function App() {
     });
   }, []);
 
-  const handleStartGame = useCallback((voiceEnabled: boolean) => {
+  const handleStartGame = useCallback((voiceEnabled: boolean, lang: Language, rate: number) => {
     setIsVoiceoverEnabled(voiceEnabled);
+    setLanguage(lang);
+    setSpeechRate(rate);
     setCurrentScreen('creation');
   }, []);
 
@@ -269,13 +274,13 @@ function App() {
     setIsAudioEnabled(true);
     setCurrentScreen('game');
 
-    await processAction(selectedClass.startingPrompt, initialState, null);
-  }, [processAction]);
+    await processAction(selectedClass.startingPrompt, initialState, null, language);
+  }, [processAction, language]);
 
   const handleSubmitAction = useCallback((action: string, selectedItem: Item | null) => {
     if (!action.trim()) return;
-    processAction(action, gameState, selectedItem);
-  }, [gameState, processAction]);
+    processAction(action, gameState, selectedItem, language);
+  }, [gameState, processAction, language]);
 
   const handleRestart = () => {
     if (currentTrackRef.current) {
@@ -288,6 +293,8 @@ function App() {
     setError(null);
     setIsAudioEnabled(false);
     setIsVoiceoverEnabled(false);
+    setLanguage('zh-TW');
+    setSpeechRate(1);
   };
   
   const renderContent = () => {
@@ -296,7 +303,11 @@ function App() {
         return <StartScreen onStart={handleStartGame} />;
       
       case 'creation':
-        return <CharacterCreationScreen classes={PLAYER_CLASSES} onSelectClass={handleClassSelect} />;
+        return <CharacterCreationScreen 
+            classes={PLAYER_CLASSES_BY_LANG[language]} 
+            onSelectClass={handleClassSelect}
+            language={language}
+        />;
 
       case 'game':
         if (gameState.gameOver) {
@@ -304,6 +315,7 @@ function App() {
             win={gameState.win} 
             onRestart={handleRestart} 
             finalStory={gameState.story}
+            language={language}
           />;
         }
         return (
@@ -314,6 +326,7 @@ function App() {
             onSubmitAction={handleSubmitAction}
             onEquipmentChange={handleEquipmentChange}
             actionResult={gameState.actionResult}
+            language={language}
           />
         );
       
