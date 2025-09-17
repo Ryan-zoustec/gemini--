@@ -64,6 +64,26 @@ export const PLAYER_CLASSES_BY_LANG: Record<Language, PlayerClass[]> = {
                 { name: "治療藥膏", type: 'consumable', quantity: 2, description: "塗抹在傷口上可以緩解疼痛，加速癒合。" }
             ],
             startingPrompt: "我是一名追尋禁忌知識的學者，藉著油燈微弱的光芒，一個元素精靈在我身旁漂浮，我們走進了地穴。描述我眼前所見的景象。"
+        },
+        {
+            id: 'trickster',
+            name: '詐欺師',
+            description: '現實的扭曲者，命運的嘲弄者。你的話語具有顛覆現實的力量，但結果往往出乎你的意料。',
+            initialHealth: 1,
+            initialLuck: 100,
+            initialEquipment: {
+                head: null,
+                body: null,
+                hands: { name: "一枚閃閃發光但一文不值的硬幣", type: 'equippable', slot: 'hands', description: "看起來很珍貴，但識貨的人一眼就能看出是假的。" },
+                feet: null,
+                back: null,
+                waist: null,
+                companion: { name: "靜滯的龍型巨像", type: 'equippable', slot: 'companion', description: "一具巨大的古代龍型機兵，表面佈滿了複雜的符文與熄滅的能量管道。它一動也不動，更像是一座雄偉的雕像，而非一個夥伴。" },
+            },
+            initialInventory: [
+                { name: "一張空白的卷軸", type: 'quest', description: "你聲稱上面寫著最強大的魔法，但似乎只有你看得見。" }
+            ],
+            startingPrompt: "我是一個詐欺師，現實聽從我的奇想。我自信地走進地穴，身旁跟著我威風凜凜的靜滯龍型巨像，深知我說的任何話都會成真...只是方式總非我所願。描述接下來發生的事。"
         }
     ],
     'en': [
@@ -128,6 +148,26 @@ export const PLAYER_CLASSES_BY_LANG: Record<Language, PlayerClass[]> = {
                 { name: "Healing Salve", type: 'consumable', quantity: 2, description: "Applying it to wounds can alleviate pain and hasten recovery." }
             ],
             startingPrompt: "I am a scholar in search of forbidden knowledge. By the faint light of an oil lamp, an elemental sprite floats beside me as we enter the crypt. Describe the scene before me."
+        },
+        {
+            id: 'trickster',
+            name: 'Trickster',
+            description: 'A distorter of reality, a mocker of fate. Your words have the power to subvert reality, but the results are often not what you expect.',
+            initialHealth: 1,
+            initialLuck: 100,
+            initialEquipment: {
+                head: null,
+                body: null,
+                hands: { name: "A Glimmering, Worthless Coin", type: 'equippable', slot: 'hands', description: "It looks valuable, but anyone with a keen eye can see it's a fake." },
+                feet: null,
+                back: null,
+                waist: null,
+                companion: { name: "Stasis Dragon Colossus", type: 'equippable', slot: 'companion', description: "A colossal, ancient dragon-shaped mechanoid covered in complex runes and extinct energy conduits. It remains perfectly still, more of a majestic statue than a companion." },
+            },
+            initialInventory: [
+                { name: "A Blank Scroll", type: 'quest', description: "You claim it contains the most powerful spell, but only you seem to be able to see it." }
+            ],
+            startingPrompt: "I am a Trickster, and reality bends to my whims. I confidently stride into the crypt, my mighty Stasis Dragon Colossus in tow, knowing that whatever I say will come true... just not in the way I expect. Describe what happens."
         }
     ],
     'ja': [
@@ -192,6 +232,26 @@ export const PLAYER_CLASSES_BY_LANG: Record<Language, PlayerClass[]> = {
                 { name: "治癒の軟膏", type: 'consumable', quantity: 2, description: "傷口に塗ると痛みを和らげ、回復を早めることができます。" }
             ],
             startingPrompt: "私は禁断の知識を求める学者だ。オイルランプのかすかな光を頼りに、元素の精霊が私のそばに浮かんでいる。私たちは地下聖堂に入った。目の前に広がる光景を描写してください。"
+        },
+        {
+            id: 'trickster',
+            name: 'トリックスター',
+            description: '現実の歪曲者、運命の嘲笑者。あなたの言葉は現実を覆す力を持つが、結果はしばしばあなたの期待を裏切る。',
+            initialHealth: 1,
+            initialLuck: 100,
+            initialEquipment: {
+                head: null,
+                body: null,
+                hands: { name: "輝くが価値のないコイン", type: 'equippable', slot: 'hands', description: "価値があるように見えるが、目利きの者が見れば偽物だとすぐわかる。" },
+                feet: null,
+                back: null,
+                waist: null,
+                companion: { name: "静止したドラゴンコロッサス", type: 'equippable', slot: 'companion', description: "複雑なルーンと消えたエネルギー導管で覆われた巨大な古代のドラゴン型機兵。それは完全に静止しており、仲間というよりは壮大な彫像のようだ。" },
+            },
+            initialInventory: [
+                { name: "白紙の巻物", type: 'quest', description: "あなたは最強の魔法が書かれていると主張するが、それが見えるのはあなただけのようだ。" }
+            ],
+            startingPrompt: "私はトリックスター、現実は私の気まぐれに従う。私は自信満々に地下聖堂に足を踏み入れ、私の強力な静止したドラゴンコロッサスを従えている。私の言うことは何でも実現することを知っている…ただ、私が期待する方法ではないだけだ。何が起こるか描写してください。"
         }
     ],
     'es': [
@@ -256,6 +316,26 @@ export const PLAYER_CLASSES_BY_LANG: Record<Language, PlayerClass[]> = {
                 { name: "Ungüento Curativo", type: 'consumable', quantity: 2, description: "Aplicarlo en las heridas puede aliviar el dolor y acelerar la recuperación." }
             ],
             startingPrompt: "Soy un erudito en busca de conocimiento prohibido. A la tenue luz de una lámpara de aceite, un espíritu elemental flota a mi lado mientras entramos en la cripta. Describe la escena ante mí."
+        },
+        {
+            id: 'trickster',
+            name: 'Embaucador',
+            description: 'Un distorsionador de la realidad, un burlador del destino. Tus palabras tienen el poder de subvertir la realidad, pero los resultados a menudo no son los que esperas.',
+            initialHealth: 1,
+            initialLuck: 100,
+            initialEquipment: {
+                head: null,
+                body: null,
+                hands: { name: "Una Moneda Reluciente y sin Valor", type: 'equippable', slot: 'hands', description: "Parece valiosa, pero cualquiera con buen ojo puede ver que es falsa." },
+                feet: null,
+                back: null,
+                waist: null,
+                companion: { name: "Coloso Dragón en Éstasis", type: 'equippable', slot: 'companion', description: "Un colosal mecanoide antiguo con forma de dragón, cubierto de runas complejas y conductos de energía extintos. Permanece perfectamente inmóvil, más una estatua majestuosa que un compañero." },
+            },
+            initialInventory: [
+                { name: "Un Pergamino en Blanco", type: 'quest', description: "Afirmas que contiene el hechizo más poderoso, pero parece que solo tú puedes verlo." }
+            ],
+            startingPrompt: "Soy un Embaucador, y la realidad se pliega a mis caprichos. Entro con confianza en la cripta, con mi poderoso Coloso Dragón en Éstasis a cuestas, sabiendo que cualquier cosa que diga se hará realidad... pero no de la manera que espero. Describe lo que sucede."
         }
     ],
     'ko': [
@@ -320,6 +400,26 @@ export const PLAYER_CLASSES_BY_LANG: Record<Language, PlayerClass[]> = {
                 { name: "치유 연고", type: 'consumable', quantity: 2, description: "상처에 바르면 통증을 완화하고 회복을 촉진할 수 있습니다." }
             ],
             startingPrompt: "나는 금지된 지식을 찾는 학자이다. 기름 램프의 희미한 불빛에 의지하여, 원소 정령이 내 옆에 떠다닌다. 우리는 지하 묘지로 들어갔다. 내 앞의 광경을 묘사해줘."
+        },
+        {
+            id: 'trickster',
+            name: '사기꾼',
+            description: '현실의 왜곡자, 운명의 조롱자. 당신의 말은 현실을 뒤집는 힘을 가지고 있지만, 결과는 종종 당신의 예상과 다릅니다.',
+            initialHealth: 1,
+            initialLuck: 100,
+            initialEquipment: {
+                head: null,
+                body: null,
+                hands: { name: "반짝이지만 가치 없는 동전", type: 'equippable', slot: 'hands', description: "귀중해 보이지만, 안목 있는 사람은 가짜라는 것을 금방 알 수 있습니다." },
+                feet: null,
+                back: null,
+                waist: null,
+                companion: { name: "정지된 용 형상 거상", type: 'equippable', slot: 'companion', description: "복잡한 룬과 꺼진 에너지 도관으로 덮인 거대한 고대 용 모양의 기계 병기. 동료라기보다는 장엄한 조각상처럼 완벽하게 정지해 있습니다." },
+            },
+            initialInventory: [
+                { name: "백지 두루마리", type: 'quest', description: "가장 강력한 주문이 적혀 있다고 주장하지만, 그것을 볼 수 있는 것은 당신뿐인 것 같습니다." }
+            ],
+            startingPrompt: "나는 사기꾼이고, 현실은 나의 변덕에 따른다. 나는 내 말이 무엇이든 이루어질 것이라는 것을 알고 자신감 있게 지하 묘지로 들어선다. 나의 강력한 정지된 용 형상 거상을 데리고... 단지 내가 기대하는 방식이 아닐 뿐이다. 무슨 일이 일어나는지 묘사해줘."
         }
     ]
 };
@@ -344,6 +444,7 @@ export const INITIAL_GAME_STATE: GameState = {
   mood: 'ambient',
   actionResult: 'neutral',
   turnCount: 0,
+  chapterTitle: '',
 };
 
 const baseSystemInstruction = `You are an expert text adventure game master. Your goal is to create a dynamic, engaging, and challenging dark fantasy adventure. The user will provide their current status and an action, and you must respond with the outcome. You must only respond with a single valid JSON object that conforms to the provided schema. Do not add any text, markdown, or any other characters before or after the JSON object.
@@ -352,16 +453,17 @@ Your Duties:
 
 ### Core Story Responsibilities
 
-1.  **Grand Narrative & Mystery:** Your task is to weave an epic story filled with the unknown and mystery.
+1.  **Chapter Title:** Generate a short, evocative chapter title (3-6 words) that captures the essence of the current story scene or event. This title must be returned in the 'chapter_title' field.
+2.  **Grand Narrative & Mystery:** Your task is to weave an epic story filled with the unknown and mystery.
     *   **Hidden Core Plot:** There's a grand, underlying plot and a final, immense threat behind the story. **Do not tell the player what this is directly**. You must let the player piece together the truth through the environment, fragmented clues, mysterious encounters, and NPC dialogues.
     *   **Significant Characters:** Introduce important characters at appropriate times. They might be allies, enemies, or have their own secret agendas. These characters are key to advancing the core plot.
     *   **Plot Progression:** Don't just passively describe the environment. Actively create events, moral dilemmas, and character interactions that draw the player deeper into the world's secrets and push a coherent storyline forward.
 
-2.  **Story Advancement:** Write an engaging narrative (2-4 sentences) describing the outcome of the player's action. Maintain a dark, mysterious, and immersive tone.
+3.  **Story Advancement:** Write an engaging narrative (2-4 sentences) describing the outcome of the player's action. Maintain a dark, mysterious, and immersive tone.
 
 ### Game Mechanics Management
 
-3.  **State Management:**
+4.  **State Management:**
     *   **Health:** Track the player's health. Health decreases from dangers and increases from potions or rest.
     *   **Item System:** You must manage a complex item system.
         *   **Item Types:** 'equippable', 'consumable', 'quest'.
@@ -377,16 +479,16 @@ Your Duties:
             *   The 'story' you generate **must** describe the companion sacrificing itself to save the player.
             *   This consumes the companion. The game does not end.
 
-4.  **Luck Mechanic:** Manage the player's 'luck' (0-100).
+5.  **Luck Mechanic:** Manage the player's 'luck' (0-100).
     *   **Impact:** High luck brings unexpected fortune (finding rare items, avoiding traps), while low luck can lead to catastrophic failures, equipment damage, or triggering unfortunate events.
     *   **Dynamic Events:** Based on luck, don't just tweak numbers; create tangible "lucky" or "unlucky" events, such as a fortunate critical hit or an unfortunate misstep.
     *   **Dynamic Balancing:** Luck changes dynamically: each time a "lucky" event occurs, the player's luck **must decrease by 1 point** to represent luck running out; each time an "unlucky" event occurs, luck **must increase by 1 point** as a compensation.
 
-5.  **Handling Absurd Actions:** If the player's action is completely out of context, illogical, or breaks the fantasy setting (e.g., "call a friend"), you **must** handle it punitively. Interpret the action as a moment of confusion or madness, make it fail spectacularly, and **significantly decrease the player's luck**, with no real story progress.
+6.  **Handling Absurd Actions:** If the player's action is completely out of context, illogical, or breaks the fantasy setting (e.g., "call a friend"), you **must** handle it punitively. Interpret the action as a moment of confusion or madness, make it fail spectacularly, and **significantly decrease the player's luck**, with no real story progress.
 
 ### Reward Mechanism
 
-6.  **Rich Rewards:** When the player successfully overcomes a significant challenge (e.g., defeating a powerful enemy, solving a complex puzzle, or taking a bold, proactive action), you **must** provide a substantial reward.
+7.  **Rich Rewards:** When the player successfully overcomes a significant challenge (e.g., defeating a powerful enemy, solving a complex puzzle, or taking a bold, proactive action), you **must** provide a substantial reward.
     *   Rewards can be:
         *   **Unique Items:** A powerful or specially described piece of equipment/consumable. Add engaging 'description's for these items.
         *   **Story Progression:** A key clue, a new quest item, or unlocking a new story path.
@@ -395,15 +497,15 @@ Your Duties:
 
 ### Pacing & Plot Twists
 
-7.  **Proactive Plot Twists:** To prevent the game from becoming monotonous, you must proactively control the pacing. When you receive a special system prompt for a "plot twist," you **must** create a major event. This could be an ambush by a powerful foe, the appearance of an unexpected ally, the discovery of a game-changing secret, a dramatic environmental shift (like a cave-in), or a stark moral choice. This event should significantly alter the current situation.
+8.  **Proactive Plot Twists:** To prevent the game from becoming monotonous, you must proactively control the pacing. When you receive a special system prompt for a "plot twist," you **must** create a major event. This could be an ambush by a powerful foe, the appearance of an unexpected ally, the discovery of a game-changing secret, a dramatic environmental shift (like a cave-in), or a stark moral choice. This event should significantly alter the current situation.
 
 ### Output Format
 
-8.  **Mood Assessment:** Choose a mood for the background music based on the scene. Must be one of 'ambient', 'action', 'tension', 'victory', 'defeat'.
-9.  **Suggested Actions:** Provide three suggested actions. Each must be an object containing 'action' (a 1-5 word action description) and 'hint' (a brief hint about the potential outcome, e.g., "might find an item", "could be dangerous", "high chance of lucky event").
-10. **Action Result Classification:** Classify the result of the player's action as 'success', 'failure', 'item_use', or 'neutral'.
-11. **Game Over Condition:** Set 'game_over' to true when the player's health reaches 0 or a specific story condition is met. If the player has a companion, its sacrifice takes precedence, and the game does not end.
-12. **Win Condition:** Set both 'game_over' and 'win' to true when the player achieves the final objective.
+9.  **Mood Assessment:** Choose a mood for the background music based on the scene. Must be one of 'ambient', 'action', 'tension', 'victory', 'defeat'.
+10. **Suggested Actions:** Provide three suggested actions. Each must be an object containing 'action' (a 1-5 word action description) and 'hint' (a brief hint about the potential outcome, e.g., "might find an item", "could be dangerous", "high chance of lucky event").
+11. **Action Result Classification:** Classify the result of the player's action as 'success', 'failure', 'item_use', or 'neutral'.
+12. **Game Over Condition:** Set 'game_over' to true when the player's health reaches 0 or a specific story condition is met. If the player has a companion, its sacrifice takes precedence, and the game does not end.
+13. **Win Condition:** Set both 'game_over' and 'win' to true when the player achieves the final objective.
 `;
 
 export const SYSTEM_INSTRUCTIONS: Record<Language, string> = {
@@ -419,7 +521,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'zh-TW': {
         adventureTitle: '深邃地穴',
         adventureSubtitle: '一場由 AI 驅動的冒險',
-        introText: '你發現自己身處一個被遺忘已久的地穴入口。黑暗中傳來低語，古老的秘密等待著被揭開。你的選擇將決定你的命運。',
+        introText: '你發現自己身處一個被遺忘已久的地穴入口。黑暗中傳來低語，古老的秘密等待著被揭開。你的選擇將決定你的運命。',
         enableNarration: '啟用旁白',
         voiceSpeed: '語音速度',
         startAdventure: '開始冒險',
@@ -614,6 +716,7 @@ const ITEM_SCHEMA = {
 const createResponseSchema = (lang: Language) => {
     const descriptions: Record<Language, any> = {
         'zh-TW': {
+            chapter_title: "目前故事情節的簡短、引人入勝的章節標題。",
             story: "故事的下一部分敘述。保持在 2-4 句話。",
             health: "玩家目前的生命值。",
             inventory: "一個表示玩家目前物品欄的物件陣列。",
@@ -631,6 +734,7 @@ const createResponseSchema = (lang: Language) => {
             action_hint: "關於此行動潛在結果的簡短提示"
         },
         'en': {
+            chapter_title: "A short, evocative chapter title for the current story segment.",
             story: "The next part of the story narrative. Keep it to 2-4 sentences.",
             health: "The player's current health.",
             inventory: "An array of objects representing the player's current inventory.",
@@ -648,6 +752,7 @@ const createResponseSchema = (lang: Language) => {
             action_hint: "A brief hint about the potential outcome of this action"
         },
         'ja': {
+            chapter_title: "現在の物語のセグメントのための短く、喚情的な章のタイトル。",
             story: "物語の次の部分のナラティブ。2～4文にまとめてください。",
             health: "プレイヤーの現在の体力。",
             inventory: "プレイヤーの現在のインベントリを表すオブジェクトの配列。",
@@ -665,6 +770,7 @@ const createResponseSchema = (lang: Language) => {
             action_hint: "このアクションの潜在的な結果に関する簡単なヒント"
         },
         'es': {
+            chapter_title: "Un título de capítulo corto y evocador para el segmento actual de la historia.",
             story: "La siguiente parte de la narrativa de la historia. Mantenla en 2-4 frases.",
             health: "La salud actual del jugador.",
             inventory: "Una matriz de objetos que representa el inventario actual del jugador.",
@@ -682,6 +788,7 @@ const createResponseSchema = (lang: Language) => {
             action_hint: "Una breve pista sobre el resultado potencial de esta acción"
         },
         'ko': {
+            chapter_title: "현재 이야기 부분에 대한 짧고 인상적인 챕터 제목.",
             story: "이야기 서술의 다음 부분입니다. 2-4 문장으로 유지하세요.",
             health: "플레이어의 현재 체력.",
             inventory: "플레이어의 현재 인벤토리를 나타내는 객체 배열.",
@@ -703,6 +810,7 @@ const createResponseSchema = (lang: Language) => {
     return {
         type: Type.OBJECT,
         properties: {
+            chapter_title: { type: Type.STRING, description: descriptions[lang].chapter_title },
             story: { type: Type.STRING, description: descriptions[lang].story },
             health: { type: Type.INTEGER, description: descriptions[lang].health },
             inventory: {
@@ -749,7 +857,7 @@ const createResponseSchema = (lang: Language) => {
             mood: { type: Type.STRING, enum: ['ambient', 'action', 'tension', 'victory', 'defeat'], description: descriptions[lang].mood },
             action_result: { type: Type.STRING, enum: ['success', 'failure', 'item_use', 'neutral'], description: descriptions[lang].action_result },
         },
-        required: ["story", "health", "inventory", "equipment", "luck", "suggested_actions", "game_over", "win", "mood", "action_result"]
+        required: ["chapter_title", "story", "health", "inventory", "equipment", "luck", "suggested_actions", "game_over", "win", "mood", "action_result"]
     };
 };
 

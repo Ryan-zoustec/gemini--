@@ -18,9 +18,11 @@ interface GameScreenProps {
   onEquipmentChange: (payload: EquipmentChangePayload) => void;
   actionResult: string;
   language: Language;
+  playerClassName: string;
+  chapterTitle: string;
 }
 
-const GameScreen: React.FC<GameScreenProps> = ({ gameState, isLoading, error, onSubmitAction, onEquipmentChange, actionResult, language }) => {
+const GameScreen: React.FC<GameScreenProps> = ({ gameState, isLoading, error, onSubmitAction, onEquipmentChange, actionResult, language, playerClassName, chapterTitle }) => {
   const [userInput, setUserInput] = useState('');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const storyEndRef = useRef<HTMLDivElement>(null);
@@ -51,7 +53,10 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameState, isLoading, error, on
 
   return (
     <div className="w-full max-w-4xl mx-auto h-[85vh] max-h-[900px] flex flex-col bg-slate-800 rounded-lg p-6 shadow-lg border border-slate-700">
-        <h1 className="text-3xl font-bold text-cyan-400 mb-4 border-b-2 border-slate-700 pb-2">{t(language, 'yourQuest')}</h1>
+        <h1 className="text-3xl font-bold text-cyan-400 mb-4 border-b-2 border-slate-700 pb-2 flex justify-between items-baseline">
+            <span>{playerClassName}</span>
+            <span className="text-xl text-slate-300 font-light tracking-wider">{chapterTitle}</span>
+        </h1>
         
         <PlayerStats 
           health={gameState.health}

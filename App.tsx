@@ -8,6 +8,7 @@ import GameOverScreen from './components/GameOverScreen';
 import CharacterCreationScreen from './components/CharacterCreationScreen';
 
 const FADE_DURATION = 2000; // 2 seconds for crossfade
+const TRICKSTER_UNLOCK_KEY = 'gemini-adventure-won';
 
 interface EquipmentChangePayload {
     action: 'equip' | 'unequip';
@@ -26,6 +27,8 @@ function App() {
   const [isVoiceoverEnabled, setIsVoiceoverEnabled] = useState<boolean>(false);
   const [language, setLanguage] = useState<Language>('zh-TW');
   const [speechRate, setSpeechRate] = useState<number>(1);
+  const [playerClass, setPlayerClass] = useState<PlayerClass | null>(null);
+  const [isTricksterUnlocked, setIsTricksterUnlocked] = useState<boolean>(false);
 
   const audioRef = useRef<{
     audioMap: { [key: string]: HTMLAudioElement };
@@ -36,6 +39,13 @@ function App() {
   const prevHealthRef = useRef<number>(gameState.health);
   const ttsVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
+  // Check for Trickster unlock on initial load
+  useEffect(() => {
+    if (localStorage.getItem(TRICKSTER_UNLOCK_KEY) === 'true') {
+      setIsTricksterUnlocked(true);
+    }
+  }, []);
+  
   // Effect to load speech synthesis voices
   useEffect(() => {
     const loadVoices = () => {
@@ -191,11 +201,11 @@ function App() {
   }, [isVoiceoverEnabled, language, speechRate]);
 
 
-  const processAction = useCallback(async (action: string, currentState: GameState, selectedItem: Item | null, lang: Language) => {
+  const processAction = useCallback(async (action: string, currentState: GameState, selectedItem: Item | null, lang: Language, pClass: PlayerClass | null) => {
     setIsLoading(true);
     setError(null);
     try {
-      const gameUpdate = await getGameUpdate(currentState, action, selectedItem, lang);
+      const gameUpdate = await getGameUpdate(currentState, action, selectedItem, lang, pClass?.id);
       
       speakStory(gameUpdate.story);
 
@@ -203,6 +213,7 @@ function App() {
       
       setGameState({
         story: currentState.story ? `${currentState.story}\n\n${gameUpdate.story}` : gameUpdate.story,
+        chapterTitle: gameUpdate.chapter_title,
         health: gameUpdate.health,
         inventory: gameUpdate.inventory,
         equipment: gameUpdate.equipment,
@@ -271,16 +282,17 @@ function App() {
         equipment: selectedClass.initialEquipment,
     };
     
+    setPlayerClass(selectedClass);
     setIsAudioEnabled(true);
     setCurrentScreen('game');
 
-    await processAction(selectedClass.startingPrompt, initialState, null, language);
+    await processAction(selectedClass.startingPrompt, initialState, null, language, selectedClass);
   }, [processAction, language]);
 
   const handleSubmitAction = useCallback((action: string, selectedItem: Item | null) => {
     if (!action.trim()) return;
-    processAction(action, gameState, selectedItem, language);
-  }, [gameState, processAction, language]);
+    processAction(action, gameState, selectedItem, language, playerClass);
+  }, [gameState, processAction, language, playerClass]);
 
   const handleRestart = () => {
     if (currentTrackRef.current) {
@@ -295,22 +307,38 @@ function App() {
     setIsVoiceoverEnabled(false);
     setLanguage('zh-TW');
     setSpeechRate(1);
+    setPlayerClass(null);
   };
   
+  const handleTricksterSessionUnlock = useCallback(() => {
+    if (!isTricksterUnlocked) {
+        setIsTricksterUnlocked(true);
+    }
+  }, [isTricksterUnlocked]);
+
   const renderContent = () => {
     switch (currentScreen) {
       case 'start':
         return <StartScreen onStart={handleStartGame} />;
       
       case 'creation':
+        const visibleClasses = isTricksterUnlocked 
+            ? PLAYER_CLASSES_BY_LANG[language] 
+            : PLAYER_CLASSES_BY_LANG[language].filter(c => c.id !== 'trickster');
+
         return <CharacterCreationScreen 
-            classes={PLAYER_CLASSES_BY_LANG[language]} 
+            classes={visibleClasses} 
             onSelectClass={handleClassSelect}
             language={language}
+            onUnlockTrickster={handleTricksterSessionUnlock}
         />;
 
       case 'game':
         if (gameState.gameOver) {
+          if (gameState.win && !isTricksterUnlocked) {
+            localStorage.setItem(TRICKSTER_UNLOCK_KEY, 'true');
+            setIsTricksterUnlocked(true);
+          }
           return <GameOverScreen 
             win={gameState.win} 
             onRestart={handleRestart} 
@@ -327,6 +355,8 @@ function App() {
             onEquipmentChange={handleEquipmentChange}
             actionResult={gameState.actionResult}
             language={language}
+            playerClassName={playerClass?.name || ''}
+            chapterTitle={gameState.chapterTitle}
           />
         );
       

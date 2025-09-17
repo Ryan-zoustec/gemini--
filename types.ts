@@ -38,6 +38,7 @@ export interface GameState {
   mood: string;
   actionResult: string;
   turnCount: number;
+  chapterTitle: string;
 }
 
 export interface GameUpdateResponse {
@@ -51,6 +52,7 @@ export interface GameUpdateResponse {
   win: boolean;
   mood:string;
   action_result: string;
+  chapter_title: string;
 }
 
 export interface PlayerClass {
