@@ -6,7 +6,7 @@ export type AIModel = 'gemini' | 'chatgpt';
 export interface Item {
   name: string;
   type: ItemType;
-  description?: string;
+  description: string;
   // The slot this item can be equipped in. Optional, as consumables don't have a slot.
   slot?: EquipmentSlot;
   quantity?: number;
