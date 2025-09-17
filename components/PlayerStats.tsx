@@ -3,19 +3,12 @@ import { createPortal } from 'react-dom';
 import { Item, EquipmentSlots, EquipmentSlot, Language } from '../types';
 import { t } from '../constants';
 
-interface EquipmentChangePayload {
-    action: 'equip' | 'unequip';
-    item: Item;
-    sourceSlot?: EquipmentSlot;
-}
-
 interface PlayerStatsProps {
   health: number;
   luck: number;
   inventory: Item[];
   equipment: EquipmentSlots;
   actionResult: string;
-  onEquipmentChange: (payload: EquipmentChangePayload) => void;
   selectedItem: Item | null;
   onSelectItem: (item: Item | null) => void;
   language: Language;
@@ -25,7 +18,6 @@ interface PlayerStatsProps {
 const HealthIcon: React.FC<{ isLow: boolean }> = ({ isLow }) => ( <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 mr-2 text-red-500 transition-transform duration-300 ${isLow ? 'animate-pulse-danger' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" /></svg> );
 const LuckIcon: React.FC = () => ( <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mr-2 text-green-400" viewBox="0 0 20 20" fill="currentColor"><path d="M10 3.5a1.5 1.5 0 013 0V4a1 1 0 001 1h.5a1.5 1.5 0 010 3H14a1 1 0 00-1 1v.5a1.5 1.5 0 01-3 0V9a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H9a1 1 0 001-1v-.5z" /><path d="M10 16.5a1.5 1.5 0 01-3 0V16a1 1 0 00-1-1h-.5a1.5 1.5 0 010-3H6a1 1 0 001-1v-.5a1.5 1.5 0 013 0V11a1 1 0 001 1h.5a1.5 1.5 0 010 3H11a1 1 0 00-1 1v.5z" /></svg> );
 
-// --- Item Specific Icons ---
 const iconProps = { className: "h-5 w-5 text-slate-300 shrink-0", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: "1.5", fill: "none", strokeLinecap: "round", strokeLinejoin: "round"} as const;
 const DaggerIcon = () => <svg {...iconProps}><path d="M14.5 17.5l-5-5 5-5m-5 5h10"/></svg>;
 const MapIcon = () => <svg {...iconProps}><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>;
@@ -39,37 +31,32 @@ const BeltIcon = () => <svg {...iconProps}><path d="M10 4H4a2 2 0 0 0-2 2v10a2 2
 const GenericItemIcon = () => <svg {...iconProps}><rect x="1" y="7" width="22" height="14" rx="2" ry="2"></rect><path d="M3 7V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2"></path><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"></path></svg>;
 const InventoryIcon = () => <svg {...iconProps}><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M12 3v4"></path><path d="M16 3v4"></path><path d="M8 3v4"></path></svg>;
 
-// --- Companion Icons ---
 const CompanionHeartIcon = () => <svg {...iconProps}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>;
-const GuardianIcon = () => <svg {...iconProps}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>;
+const GuardianIcon = () => <svg {...iconProps}><path d="M12 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" fill="currentColor"></path><path d="M12 12c-3.41 0-6.32 1.9-7.75 4.66.42.92.98 1.76 1.66 2.48A8.99 8.99 0 0 1 12 15a8.99 8.99 0 0 1 6.09 2.14c.68-.72 1.24-1.56 1.66-2.48C18.32 13.9 15.41 12 12 12z" strokeWidth="0" fill="currentColor"></path></svg>;
 const PerceptionIcon = () => <svg {...iconProps}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
 const EnergyIcon = () => <svg {...iconProps}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
-
+const DragonIcon = () => <svg {...iconProps}><path d="M22 12c-5 0-7 2-7 4s2 4 7 4c-1.5 2.5-4 4-7 4-5 0-7-4-7-8s2-8 7-8c3 0 5.5 1.5 7 4-5 0-7 2-7 4s2 4 7 4zM2 12c5 0 7-2 7-4s-2-4-7-4c1.5-2.5 4-4 7-4 5 0 7 4 7 8s-2 8-7 8c-3 0-5.5-1.5-7-4c5 0 7-2 7-4s-2-4-7-4z"></path></svg>;
 
 const getIconForItem = (item: Item | null): React.ReactElement => {
     if (!item) return <GenericItemIcon />;
     const name = item.name.toLowerCase();
-    const type = item.type;
-    const slot = item.slot;
-
-    // Universal keywords
-    if (slot === 'companion') {
+    
+    // Companion check first
+    if (item.slot === 'companion') {
         if (name.includes('hound') || name.includes('犬')) return <GuardianIcon />;
         if (name.includes('owl') || name.includes('梟')) return <PerceptionIcon />;
         if (name.includes('sprite') || name.includes('精靈')) return <EnergyIcon />;
+        if (name.includes('dragon') || name.includes('龍')) return <DragonIcon />;
         return <CompanionHeartIcon />;
     }
 
-    if (slot === 'head' || name.includes('helmet') || name.includes('頭盔') || name.includes('hat') || name.includes('帽')) return <HelmetIcon />;
-    if (slot === 'body' || name.includes('armor') || name.includes('甲') || name.includes('robe') || name.includes('袍')) return <ArmorIcon />;
-    if (slot === 'hands' || name.includes('dagger') || name.includes('匕首') || name.includes('sword') || name.includes('劍') || name.includes('blade') || name.includes('刀')) return <DaggerIcon />;
-    if (slot === 'feet' || name.includes('boots') || name.includes('靴')) return <BootsIcon />;
-    if (slot === 'back' || name.includes('pack') || name.includes('背包') || name.includes('cloak') || name.includes('披風')) return <BackpackIcon />;
-    if (slot === 'waist' || name.includes('belt') || name.includes('腰帶')) return <BeltIcon />;
-
     if (name.includes('map') || name.includes('地圖')) return <MapIcon />;
-    if (name.includes('potion') || name.includes('藥水') || name.includes('elixir') || name.includes('藥劑') || name.includes('bottle') || name.includes('瓶')) return <PotionIcon />;
-    if (name.includes('key') || name.includes('鑰匙')) return <KeyIcon />;
+    if (name.includes('potion') || name.includes('藥水') || name.includes('salve') || name.includes('藥膏')) return <PotionIcon />;
+    if (name.includes('key') || name.includes('鑰匙') || name.includes('lockpick') || name.includes('開鎖器')) return <KeyIcon />;
+    if (name.includes('armor') || name.includes('甲') || name.includes('robes') || name.includes('袍')) return <ArmorIcon />;
+    if (name.includes('helmet') || name.includes('頭盔') || name.includes('cap') || name.includes('帽')) return <HelmetIcon />;
+    if (name.includes('boots') || name.includes('靴')) return <BootsIcon />;
+    if (name.includes('sword') || name.includes('劍') || name.includes('dagger') || name.includes('匕首')) return <DaggerIcon />;
     
     return <GenericItemIcon />;
 };
@@ -77,13 +64,12 @@ const getIconForItem = (item: Item | null): React.ReactElement => {
 const EquipmentSlotComponent: React.FC<{
     slot: EquipmentSlot;
     item: Item | null;
-    slotName: string;
-    onDrop: (e: React.DragEvent<HTMLDivElement>, targetSlot: EquipmentSlot) => void;
     onMouseEnter: (e: React.MouseEvent<HTMLDivElement>, item: Item | null) => void;
     onMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => void;
     onMouseMove: (e: React.MouseEvent<HTMLDivElement>) => void;
-}> = ({ slot, item, slotName, onDrop, onMouseEnter, onMouseLeave, onMouseMove }) => {
-    const [isOver, setIsOver] = useState(false);
+    // FIX: Added language prop to fix "Cannot find name 'language'" error.
+    language: Language;
+}> = ({ slot, item, onMouseEnter, onMouseLeave, onMouseMove, language }) => {
     
     const icons: Record<EquipmentSlot, React.ReactElement> = {
         head: <HelmetIcon />,
@@ -95,64 +81,38 @@ const EquipmentSlotComponent: React.FC<{
         companion: <CompanionHeartIcon />,
     };
 
-    const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        setIsOver(true);
-    };
-
-    const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        setIsOver(false);
-    };
-    
-    const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-        e.preventDefault();
-        setIsOver(false);
-        onDrop(e, slot);
-    };
-
-    const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-        if (!item) return;
-        const payload = { item, source: slot };
-        e.dataTransfer.setData("application/json", JSON.stringify(payload));
-    };
-
     const isCompanionSlot = slot === 'companion';
     const baseClasses = `bg-slate-700/50 rounded-lg flex items-center justify-center border-2 border-dashed transition-colors relative p-1`;
-    const sizeClasses = isCompanionSlot ? "h-24 w-24" : "h-20 w-20";
-    const stateClasses = isOver ? "border-cyan-400 bg-slate-600" : item ? "border-slate-500" : "border-slate-600";
+    const sizeClasses = isCompanionSlot ? "h-28 w-28" : "h-20 w-20";
+    const stateClasses = item ? "border-slate-500 bg-slate-700" : "border-slate-600";
+    const slotName = t(language, `slot_${slot}`);
     
-    const slotNamePosition = isCompanionSlot ? 'top-2 left-0 right-0 text-center' : 'top-1 left-2 text-left';
+    const slotNamePosition = 'top-1.5 left-0 right-0 text-center';
     
     const content = item ? (
-      <div className={`flex flex-col items-center text-center text-xs justify-center h-full ${isCompanionSlot ? 'pt-2' : ''}`}>
+      <div className={`flex flex-col items-center text-center text-xs justify-center h-full pt-4`}>
         {getIconForItem(item)}
         <span className="text-slate-300 w-full break-words leading-tight mt-1 px-1">{item.name}</span>
       </div>
     ) : (
-      <div className={`text-slate-500 ${isCompanionSlot ? 'pt-3' : ''}`}>{icons[slot]}</div>
+      <div className="text-slate-500 pt-4">{icons[slot]}</div>
     );
 
     return (
         <div 
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            draggable={!!item}
-            onDragStart={handleDragStart}
             onMouseEnter={(e) => onMouseEnter(e, item)}
             onMouseLeave={onMouseLeave}
             onMouseMove={onMouseMove}
-            className={`${baseClasses} ${sizeClasses} ${stateClasses} ${item ? 'cursor-grab' : ''} ${isCompanionSlot ? 'rounded-full' : ''}`}
+            className={`${baseClasses} ${sizeClasses} ${stateClasses} ${isCompanionSlot ? 'rounded-full' : ''}`}
         >
-            <span className={`absolute text-xs text-slate-400 font-semibold ${slotNamePosition}`}>{slotName}</span>
+            <span className={`absolute text-sm text-slate-400 font-semibold ${slotNamePosition}`}>{slotName}</span>
             {content}
         </div>
     );
 };
 
 
-const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equipment, actionResult, onEquipmentChange, selectedItem, onSelectItem, language }) => {
+const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equipment, actionResult, selectedItem, onSelectItem, language }) => {
   const maxHealth = 100;
   const healthPercentage = (health / maxHealth) * 100;
   const healthColor = healthPercentage > 60 ? 'bg-green-500' : healthPercentage > 30 ? 'bg-yellow-500' : 'bg-red-500';
@@ -174,10 +134,8 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
         const timer = setTimeout(() => setInventoryAnim(''), 800);
         return () => clearTimeout(timer);
     }
-  }, [actionResult]);
+  }, [actionResult, health, luck, inventory.length]);
 
-  // FIX: Updated handleMouseEnter to accept an Item object to resolve type errors
-  // with EquipmentSlotComponent's onMouseEnter prop.
   const handleMouseEnter = (e: React.MouseEvent, item: Item | null) => {
     if (item?.description) {
       setTooltip({
@@ -197,28 +155,6 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
       setTooltip(t => t ? { ...t, x: e.clientX, y: e.clientY } : null);
     }
   };
-
-  const handleEquipmentDrop = (e: React.DragEvent<HTMLDivElement>, targetSlot: EquipmentSlot) => {
-    const payload = JSON.parse(e.dataTransfer.getData("application/json"));
-    const { item, source } = payload;
-    if (source === 'inventory' && item.type === 'equippable' && item.slot === targetSlot) {
-        onEquipmentChange({ action: 'equip', item });
-    }
-  };
-
-  const handleInventoryDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const payload = JSON.parse(e.dataTransfer.getData("application/json"));
-    const { item, source } = payload;
-    if (source !== 'inventory') {
-        onEquipmentChange({ action: 'unequip', item, sourceSlot: source });
-    }
-  }
-
-  const handleItemDragStart = (e: React.DragEvent<HTMLDivElement>, item: Item) => {
-    const payload = { item, source: 'inventory' };
-    e.dataTransfer.setData("application/json", JSON.stringify(payload));
-  };
   
   const commonMouseEventHandlers = {
     onMouseLeave: handleMouseLeave,
@@ -229,78 +165,67 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
     <EquipmentSlotComponent 
         slot={slot} 
         item={equipment[slot]}
-        slotName={t(language, `slot_${slot}`)}
-        onDrop={(e) => handleEquipmentDrop(e, slot)} 
         onMouseEnter={handleMouseEnter} 
+        // FIX: Passed language prop to EquipmentSlotComponent.
+        language={language}
         {...commonMouseEventHandlers}
     />
   );
 
   return (
-    <div className="space-y-3 text-sm">
-      <div className="grid grid-cols-2 gap-3">
+    <div className="space-y-4 text-sm h-full flex flex-col">
         {/* Health and Luck bars */}
-        <div className="bg-slate-900/50 p-2 rounded-md">
+        <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
           <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
                 <HealthIcon isLow={isHealthLow} />
-                <span className="font-bold text-slate-300">{t(language, 'health')}</span>
+                <span className="font-bold text-slate-300 text-lg">{t(language, 'health')}</span>
               </div>
-              <span className="font-mono text-sm text-slate-300">{health}/{maxHealth}</span>
+              <span className="font-mono text-lg text-slate-300">{health}/{maxHealth}</span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-3.5"><div className={`h-3.5 rounded-full transition-all duration-500 ${healthColor}`} style={{ width: `${healthPercentage}%` }}></div></div>
+          <div className="w-full bg-slate-700 rounded-full h-4 border border-slate-600"><div className={`h-full rounded-full transition-all duration-500 ${healthColor}`} style={{ width: `${healthPercentage}%` }}></div></div>
         </div>
-        <div className={`bg-slate-900/50 p-2 rounded-md ${luckAnim}`}>
+        <div className={`bg-slate-900/50 p-3 rounded-lg border border-slate-700 ${luckAnim}`}>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
                 <LuckIcon />
-                <span className="font-bold text-slate-300">{t(language, 'luck')}</span>
+                <span className="font-bold text-slate-300 text-lg">{t(language, 'luck')}</span>
             </div>
-             <span className="font-mono text-sm text-slate-300">{luck}/100</span>
+             <span className="font-mono text-lg text-slate-300">{luck}/100</span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-3.5"><div className="h-3.5 rounded-full transition-all duration-500 bg-green-400" style={{ width: `${luck}%` }}></div></div>
+          <div className="w-full bg-slate-700 rounded-full h-4 border border-slate-600"><div className="h-full rounded-full transition-all duration-500 bg-green-400" style={{ width: `${luck}%` }}></div></div>
         </div>
-      </div>
 
-      <div className="grid grid-cols-3 gap-3">
         {/* Equipment */}
-        <div className="col-span-1 bg-slate-900/50 p-2 rounded-md flex flex-col items-center space-y-2">
+        <div className="bg-slate-900/50 p-3 rounded-lg flex flex-col items-center space-y-2 border border-slate-700">
             {renderEquipmentSlot('companion')}
-            <div className="w-4/5 border-t border-slate-700 my-1"></div>
-            {renderEquipmentSlot('head')}
             <div className="flex gap-2">
-                {renderEquipmentSlot('hands')}
+                {renderEquipmentSlot('head')}
                 {renderEquipmentSlot('body')}
-                {renderEquipmentSlot('back')}
+                {renderEquipmentSlot('hands')}
             </div>
-            <div className="flex gap-2">
+             <div className="flex gap-2">
+                {renderEquipmentSlot('back')}
                 {renderEquipmentSlot('waist')}
                 {renderEquipmentSlot('feet')}
             </div>
         </div>
 
         {/* Inventory */}
-        <div 
-          className={`col-span-2 bg-slate-900/50 p-3 rounded-md ${inventoryAnim}`}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={handleInventoryDrop}
-        >
+        <div className={`flex-grow bg-slate-900/50 p-3 rounded-lg border border-slate-700 ${inventoryAnim}`}>
           <div className="flex items-center mb-2">
               <InventoryIcon />
-              <span className="font-bold text-slate-300 ml-2">{t(language, 'inventory')}</span>
+              <span className="font-bold text-slate-300 ml-2 text-lg">{t(language, 'inventory')}</span>
           </div>
-          <div className="flex flex-wrap gap-2 min-h-[10rem]">
+          <div className="flex flex-wrap gap-2 min-h-[5rem] content-start">
             {inventory.length > 0 ? (
               inventory.map((item, index) => (
                 <div
                   key={`${item.name}-${index}`}
-                  draggable={item.type === 'equippable'}
-                  onDragStart={(e) => handleItemDragStart(e, item)}
                   onClick={() => onSelectItem(selectedItem === item ? null : item)}
-                  // FIX: Pass the full item object to handleMouseEnter instead of just the description.
                   onMouseEnter={(e) => handleMouseEnter(e, item)}
                   {...commonMouseEventHandlers}
-                  className={`bg-slate-700 text-slate-300 h-fit pl-2 pr-3 py-1.5 rounded-full text-xs capitalize flex items-center transition-colors ${item.type === 'equippable' ? 'cursor-grab hover:bg-slate-600' : 'cursor-pointer hover:bg-slate-600'} ${selectedItem === item ? 'ring-2 ring-cyan-400' : ''}`}
+                  className={`bg-slate-700 text-slate-300 h-fit pl-2 pr-3 py-1.5 rounded-full text-xs capitalize flex items-center transition-colors cursor-pointer hover:bg-slate-600 border border-slate-600 ${selectedItem === item ? 'ring-2 ring-cyan-400' : ''}`}
                 >
                   <div className="mr-1.5">{getIconForItem(item)}</div>
                   {item.name} {item.quantity && item.quantity > 1 ? `(x${item.quantity})` : ''}
@@ -311,7 +236,7 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
             )}
           </div>
         </div>
-      </div>
+      
        {tooltip && createPortal(
           <div
             className="fixed z-50 p-3 text-sm bg-slate-800/90 backdrop-blur-sm text-slate-200 border border-slate-600 rounded-lg shadow-lg max-w-xs transition-opacity duration-200"

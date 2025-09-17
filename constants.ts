@@ -1,871 +1,461 @@
-import { GameState, PlayerClass, Language } from './types';
-import { Type } from '@google/genai';
+import { PlayerClass, Language, Item, EquipmentSlots, GameState } from './types';
+import { GoogleGenAI, Type } from "@google/genai";
 
-export const PLAYER_CLASSES_BY_LANG: Record<Language, PlayerClass[]> = {
-    'zh-TW': [
-        {
-            id: 'knight',
-            name: '騎士',
-            description: '一名忠誠的戰士，擅長近身戰鬥。你的榮譽就是你的生命，你的劍盾是你唯一的夥伴。',
-            initialHealth: 100,
-            initialLuck: 50,
-            initialEquipment: {
-                head: null,
-                body: { name: "一件磨損的鏈甲", type: 'equippable', slot: 'body', description: "無數次戰鬥的痕跡刻印其上，提供了不錯的保護。" },
-                hands: { name: "一把可靠的短劍", type: 'equippable', slot: 'hands', description: "雖然不華麗，但劍刃鋒利，值得信賴。" },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "守護犬", type: 'equippable', slot: 'companion', description: "忠誠的夥伴，會在危險時提供幫助，並能為你抵擋一次致命的攻擊。" },
-            },
-            initialInventory: [
-                { name: "一張來自國王的密令", type: 'quest', description: "一封用火漆封口的信件，催促你深入地穴調查異常。" }
-            ],
-            startingPrompt: "我是一名身披鏈甲的騎士，緊握著我的短劍，我的守護犬跟在我身邊，一同踏入了地穴。描述我眼前所見的景象。"
-        },
-        {
-            id: 'rogue',
-            name: '盜賊',
-            description: '陰影中的潛行者，身手敏捷。你依靠智慧與速度生存，而非蠻力。',
-            initialHealth: 30,
-            initialLuck: 90,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "一把淬毒的匕首", type: 'equippable', slot: 'hands', description: "刀刃上閃爍著詭異的綠光，輕微的劃傷都可能致命。" },
-                feet: null,
-                back: { name: "一個輕便的背包", type: 'equippable', slot: 'back', description: "內有許多小口袋，適合存放各種工具與戰利品。" },
-                waist: null,
-                companion: { name: "夜梟", type: 'equippable', slot: 'companion', description: "敏銳的偵察兵，能在黑暗中發現秘密，並能為你抵擋一次致命的攻擊。" },
-            },
-            initialInventory: [
-                { name: "一套開鎖工具", type: 'quest', description: "幾根金屬絲和一個張力扳手，能打開大部分世俗的鎖。" },
-                { name: "煙霧彈", type: 'consumable', quantity: 1, description: "製造混亂，掩護你的逃脫。" }
-            ],
-            startingPrompt: "我是一名潛伏在陰影中的盜賊，我的夜梟無聲地停在我的肩上，我們一同溜進了地穴的入口。描述我眼前所見的景象。"
-        },
-        {
-            id: 'scholar',
-            name: '學者',
-            description: '知識的追尋者，痴迷於奧秘與禁忌。你用智慧解決問題，而非刀劍。',
-            initialHealth: 60,
-            initialLuck: 70,
-            initialEquipment: {
-                head: { name: "一副單片眼鏡", type: 'equippable', slot: 'head', description: "鏡片經過特殊處理，能讓你看到常人無法察覺的細節。" },
-                body: null,
-                hands: null,
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "元素精靈", type: 'equippable', slot: 'companion', description: "一個神秘的能量體，能感知魔法的流動，並能為你抵擋一次致命的攻擊。" },
-            },
-            initialInventory: [
-                { name: "一本神秘的古籍", type: 'quest', description: "書頁上記載著難以辨認的符文與圖案，似乎蘊含著強大的力量。" },
-                { name: "治療藥膏", type: 'consumable', quantity: 2, description: "塗抹在傷口上可以緩解疼痛，加速癒合。" }
-            ],
-            startingPrompt: "我是一名追尋禁忌知識的學者，藉著油燈微弱的光芒，一個元素精靈在我身旁漂浮，我們走進了地穴。描述我眼前所見的景象。"
-        },
-        {
-            id: 'trickster',
-            name: '詐欺師',
-            description: '現實的扭曲者，命運的嘲弄者。你的話語具有顛覆現實的力量，但結果往往出乎你的意料。',
-            initialHealth: 1,
-            initialLuck: 100,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "一枚閃閃發光但一文不值的硬幣", type: 'equippable', slot: 'hands', description: "看起來很珍貴，但識貨的人一眼就能看出是假的。" },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "靜滯的龍型巨像", type: 'equippable', slot: 'companion', description: "一具巨大的古代龍型機兵，表面佈滿了複雜的符文與熄滅的能量管道。它一動也不動，更像是一座雄偉的雕像，而非一個夥伴。" },
-            },
-            initialInventory: [
-                { name: "一張空白的卷軸", type: 'quest', description: "你聲稱上面寫著最強大的魔法，但似乎只有你看得見。" }
-            ],
-            startingPrompt: "我是一個詐欺師，現實聽從我的奇想。我自信地走進地穴，身旁跟著我威風凜凜的靜滯龍型巨像，深知我說的任何話都會成真...只是方式總非我所願。描述接下來發生的事。"
-        }
-    ],
-    'en': [
-        {
-            id: 'knight',
-            name: 'Knight',
-            description: 'A loyal warrior specializing in close combat. Your honor is your life, and your sword and shield are your only companions.',
-            initialHealth: 100,
-            initialLuck: 50,
-            initialEquipment: {
-                head: null,
-                body: { name: "Worn Chainmail", type: 'equippable', slot: 'body', description: "The marks of countless battles are etched upon it, providing decent protection." },
-                hands: { name: "Reliable Shortsword", type: 'equippable', slot: 'hands', description: "Though not ornate, its blade is sharp and trustworthy." },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "Guardian Hound", type: 'equippable', slot: 'companion', description: "A loyal partner that aids in danger and can shield you from a single fatal blow." },
-            },
-            initialInventory: [
-                { name: "A Secret Order from the King", type: 'quest', description: "A letter sealed with wax, urging you to investigate the anomalies deep within the crypt." }
-            ],
-            startingPrompt: "I am a knight clad in chainmail, gripping my shortsword tightly. My guardian hound is by my side as we step into the crypt. Describe the scene before me."
-        },
-        {
-            id: 'rogue',
-            name: 'Rogue',
-            description: 'A stealthy operative of the shadows, agile and nimble. You survive on wit and speed, not brute force.',
-            initialHealth: 30,
-            initialLuck: 90,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "A Poisoned Dagger", type: 'equippable', slot: 'hands', description: "An eerie green light glints from the blade; even a slight scratch could be fatal." },
-                feet: null,
-                back: { name: "A Lightweight Pack", type: 'equippable', slot: 'back', description: "Contains many small pockets, perfect for storing various tools and loot." },
-                waist: null,
-                companion: { name: "Night Owl", type: 'equippable', slot: 'companion', description: "A keen scout that can spot secrets in the dark and can shield you from a single fatal blow." },
-            },
-            initialInventory: [
-                { name: "A Set of Lockpicks", type: 'quest', description: "A few metal wires and a tension wrench, capable of opening most mundane locks." },
-                { name: "Smoke Bomb", type: 'consumable', quantity: 1, description: "Creates chaos, covering your escape." }
-            ],
-            startingPrompt: "I am a rogue lurking in the shadows, my night owl perched silently on my shoulder. Together, we slip into the crypt's entrance. Describe the scene before me."
-        },
-        {
-            id: 'scholar',
-            name: 'Scholar',
-            description: 'A seeker of knowledge, obsessed with the arcane and the forbidden. You solve problems with your intellect, not a blade.',
-            initialHealth: 60,
-            initialLuck: 70,
-            initialEquipment: {
-                head: { name: "A Monocle", type: 'equippable', slot: 'head', description: "The lens is specially treated, allowing you to see details imperceptible to the average person." },
-                body: null,
-                hands: null,
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "Elemental Sprite", type: 'equippable', slot: 'companion', description: "A mysterious energy being that can sense the flow of magic and can shield you from a single fatal blow." },
-            },
-            initialInventory: [
-                { name: "A Mysterious Tome", type: 'quest', description: "Its pages are filled with illegible runes and diagrams, seemingly containing great power." },
-                { name: "Healing Salve", type: 'consumable', quantity: 2, description: "Applying it to wounds can alleviate pain and hasten recovery." }
-            ],
-            startingPrompt: "I am a scholar in search of forbidden knowledge. By the faint light of an oil lamp, an elemental sprite floats beside me as we enter the crypt. Describe the scene before me."
-        },
-        {
-            id: 'trickster',
-            name: 'Trickster',
-            description: 'A distorter of reality, a mocker of fate. Your words have the power to subvert reality, but the results are often not what you expect.',
-            initialHealth: 1,
-            initialLuck: 100,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "A Glimmering, Worthless Coin", type: 'equippable', slot: 'hands', description: "It looks valuable, but anyone with a keen eye can see it's a fake." },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "Stasis Dragon Colossus", type: 'equippable', slot: 'companion', description: "A colossal, ancient dragon-shaped mechanoid covered in complex runes and extinct energy conduits. It remains perfectly still, more of a majestic statue than a companion." },
-            },
-            initialInventory: [
-                { name: "A Blank Scroll", type: 'quest', description: "You claim it contains the most powerful spell, but only you seem to be able to see it." }
-            ],
-            startingPrompt: "I am a Trickster, and reality bends to my whims. I confidently stride into the crypt, my mighty Stasis Dragon Colossus in tow, knowing that whatever I say will come true... just not in the way I expect. Describe what happens."
-        }
-    ],
-    'ja': [
-        {
-            id: 'knight',
-            name: '騎士',
-            description: '近接戦闘に特化した忠実な戦士。あなたの名誉はあなたの命であり、剣と盾が唯一の仲間です。',
-            initialHealth: 100,
-            initialLuck: 50,
-            initialEquipment: {
-                head: null,
-                body: { name: "使い古された鎖帷子", type: 'equippable', slot: 'body', description: "無数の戦いの跡が刻まれており、まずまずの防御力を提供します。" },
-                hands: { name: "信頼できる短剣", type: 'equippable', slot: 'hands', description: "華やかさはありませんが、刃は鋭く信頼できます。" },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "守護犬", type: 'equippable', slot: 'companion', description: "危険な時に助けてくれる忠実な相棒で、一度だけ致命的な攻撃からあなたを守ってくれます。" },
-            },
-            initialInventory: [
-                { name: "王からの密命", type: 'quest', description: "蝋で封をされた手紙。地下聖堂の異常を調査するよう促しています。" }
-            ],
-            startingPrompt: "私は鎖帷子を身にまとった騎士で、短剣を固く握りしめている。守護犬が私のそばにいて、共に地下聖堂へと足を踏み入れた。目の前に広がる光景を描写してください。"
-        },
-        {
-            id: 'rogue',
-            name: '盗賊',
-            description: '影に潜む者、機敏で素早い。あなたは腕力ではなく、知恵と速さで生き残る。',
-            initialHealth: 30,
-            initialLuck: 90,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "毒を塗った短剣", type: 'equippable', slot: 'hands', description: "刃は不気味な緑色の光を放ち、わずかな切り傷でさえ致命的となる可能性があります。" },
-                feet: null,
-                back: { name: "軽量のバックパック", type: 'equippable', slot: 'back', description: "多くの小さなポケットがあり、様々な道具や戦利品を保管するのに最適です。" },
-                waist: null,
-                companion: { name: "夜梟", type: 'equippable', slot: 'companion', description: "暗闇の中で秘密を見つけ出す鋭い斥候で、一度だけ致命的な攻撃からあなたを守ってくれます。" },
-            },
-            initialInventory: [
-                { name: "鍵開け道具一式", type: 'quest', description: "数本の金属線とテンションレンチ。ほとんどの世俗的な錠前を開けることができます。" },
-                { name: "煙幕弾", type: 'consumable', quantity: 1, description: "混乱を引き起こし、脱出を援護します。" }
-            ],
-            startingPrompt: "私は影に潜む盗賊で、夜梟が静かに私の肩に止まっている。私たちは共に地下聖堂の入り口に忍び込んだ。目の前に広がる光景を描写してください。"
-        },
-        {
-            id: 'scholar',
-            name: '学者',
-            description: '知識の探求者、秘儀と禁断の知識に魅了されている。あなたは刃ではなく、知性で問題を解決する。',
-            initialHealth: 60,
-            initialLuck: 70,
-            initialEquipment: {
-                head: { name: "片眼鏡", type: 'equippable', slot: 'head', description: "レンズは特別に処理されており、常人には見えない詳細を見ることができます。" },
-                body: null,
-                hands: null,
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "元素の精霊", type: 'equippable', slot: 'companion', description: "魔法の流れを感じ取ることができる神秘的なエネルギー体で、一度だけ致命的な攻撃からあなたを守ってくれます。" },
-            },
-            initialInventory: [
-                { name: "神秘的な古書", type: 'quest', description: "そのページは解読不能なルーン文字と図で満ちており、強大な力を秘めているようです。" },
-                { name: "治癒の軟膏", type: 'consumable', quantity: 2, description: "傷口に塗ると痛みを和らげ、回復を早めることができます。" }
-            ],
-            startingPrompt: "私は禁断の知識を求める学者だ。オイルランプのかすかな光を頼りに、元素の精霊が私のそばに浮かんでいる。私たちは地下聖堂に入った。目の前に広がる光景を描写してください。"
-        },
-        {
-            id: 'trickster',
-            name: 'トリックスター',
-            description: '現実の歪曲者、運命の嘲笑者。あなたの言葉は現実を覆す力を持つが、結果はしばしばあなたの期待を裏切る。',
-            initialHealth: 1,
-            initialLuck: 100,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "輝くが価値のないコイン", type: 'equippable', slot: 'hands', description: "価値があるように見えるが、目利きの者が見れば偽物だとすぐわかる。" },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "静止したドラゴンコロッサス", type: 'equippable', slot: 'companion', description: "複雑なルーンと消えたエネルギー導管で覆われた巨大な古代のドラゴン型機兵。それは完全に静止しており、仲間というよりは壮大な彫像のようだ。" },
-            },
-            initialInventory: [
-                { name: "白紙の巻物", type: 'quest', description: "あなたは最強の魔法が書かれていると主張するが、それが見えるのはあなただけのようだ。" }
-            ],
-            startingPrompt: "私はトリックスター、現実は私の気まぐれに従う。私は自信満々に地下聖堂に足を踏み入れ、私の強力な静止したドラゴンコロッサスを従えている。私の言うことは何でも実現することを知っている…ただ、私が期待する方法ではないだけだ。何が起こるか描写してください。"
-        }
-    ],
-    'es': [
-        {
-            id: 'knight',
-            name: 'Caballero',
-            description: 'Un guerrero leal especializado en combate cuerpo a cuerpo. Tu honor es tu vida, y tu espada y escudo son tus únicos compañeros.',
-            initialHealth: 100,
-            initialLuck: 50,
-            initialEquipment: {
-                head: null,
-                body: { name: "Cota de Mallas Gastada", type: 'equippable', slot: 'body', description: "Las marcas de innumerables batallas están grabadas en ella, proporcionando una protección decente." },
-                hands: { name: "Espada Corta Fiable", type: 'equippable', slot: 'hands', description: "Aunque no es ornamentada, su hoja es afilada y digna de confianza." },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "Sabueso Guardián", type: 'equippable', slot: 'companion', description: "Un compañero leal que ayuda en el peligro y puede protegerte de un único golpe fatal." },
-            },
-            initialInventory: [
-                { name: "Una Orden Secreta del Rey", type: 'quest', description: "Una carta sellada con cera, instándote a investigar las anomalías en las profundidades de la cripta." }
-            ],
-            startingPrompt: "Soy un caballero vestido con cota de mallas, empuñando firmemente mi espada corta. Mi sabueso guardián está a mi lado mientras entramos en la cripta. Describe la escena ante mí."
-        },
-        {
-            id: 'rogue',
-            name: 'Pícaro',
-            description: 'Un sigiloso agente de las sombras, ágil y diestro. Sobrevives con ingenio y velocidad, no con fuerza bruta.',
-            initialHealth: 30,
-            initialLuck: 90,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "Daga Envenenada", type: 'equippable', slot: 'hands', description: "Una inquietante luz verde brilla en la hoja; incluso un rasguño leve podría ser fatal." },
-                feet: null,
-                back: { name: "Mochila Ligera", type: 'equippable', slot: 'back', description: "Contiene muchos bolsillos pequeños, perfectos para guardar diversas herramientas y botines." },
-                waist: null,
-                companion: { name: "Búho Nocturno", type: 'equippable', slot: 'companion', description: "Un agudo explorador que puede descubrir secretos en la oscuridad y puede protegerte de un único golpe fatal." },
-            },
-            initialInventory: [
-                { name: "Un Juego de Ganzúas", type: 'quest', description: "Unos cuantos alambres de metal y una llave de tensión, capaces de abrir la mayoría de las cerraduras mundanas." },
-                { name: "Bomba de Humo", type: 'consumable', quantity: 1, description: "Crea caos, cubriendo tu escape." }
-            ],
-            startingPrompt: "Soy un pícaro acechando en las sombras, mi búho nocturno posado silenciosamente en mi hombro. Juntos, nos deslizamos en la entrada de la cripta. Describe la escena ante mí."
-        },
-        {
-            id: 'scholar',
-            name: 'Erudito',
-            description: 'Un buscador de conocimiento, obsesionado con lo arcano y lo prohibido. Resuelves problemas con tu intelecto, no con una espada.',
-            initialHealth: 60,
-            initialLuck: 70,
-            initialEquipment: {
-                head: { name: "Un Monóculo", type: 'equippable', slot: 'head', description: "La lente está especialmente tratada, permitiéndote ver detalles imperceptibles para la persona promedio." },
-                body: null,
-                hands: null,
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "Espíritu Elemental", type: 'equippable', slot: 'companion', description: "Un misterioso ser de energía que puede sentir el flujo de la magia y puede protegerte de un único golpe fatal." },
-            },
-            initialInventory: [
-                { name: "Un Tomo Misterioso", type: 'quest', description: "Sus páginas están llenas de runas y diagramas ilegibles, que parecen contener un gran poder." },
-                { name: "Ungüento Curativo", type: 'consumable', quantity: 2, description: "Aplicarlo en las heridas puede aliviar el dolor y acelerar la recuperación." }
-            ],
-            startingPrompt: "Soy un erudito en busca de conocimiento prohibido. A la tenue luz de una lámpara de aceite, un espíritu elemental flota a mi lado mientras entramos en la cripta. Describe la escena ante mí."
-        },
-        {
-            id: 'trickster',
-            name: 'Embaucador',
-            description: 'Un distorsionador de la realidad, un burlador del destino. Tus palabras tienen el poder de subvertir la realidad, pero los resultados a menudo no son los que esperas.',
-            initialHealth: 1,
-            initialLuck: 100,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "Una Moneda Reluciente y sin Valor", type: 'equippable', slot: 'hands', description: "Parece valiosa, pero cualquiera con buen ojo puede ver que es falsa." },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "Coloso Dragón en Éstasis", type: 'equippable', slot: 'companion', description: "Un colosal mecanoide antiguo con forma de dragón, cubierto de runas complejas y conductos de energía extintos. Permanece perfectamente inmóvil, más una estatua majestuosa que un compañero." },
-            },
-            initialInventory: [
-                { name: "Un Pergamino en Blanco", type: 'quest', description: "Afirmas que contiene el hechizo más poderoso, pero parece que solo tú puedes verlo." }
-            ],
-            startingPrompt: "Soy un Embaucador, y la realidad se pliega a mis caprichos. Entro con confianza en la cripta, con mi poderoso Coloso Dragón en Éstasis a cuestas, sabiendo que cualquier cosa que diga se hará realidad... pero no de la manera que espero. Describe lo que sucede."
-        }
-    ],
-    'ko': [
-        {
-            id: 'knight',
-            name: '기사',
-            description: '근접 전투에 특화된 충성스러운 전사. 당신의 명예는 당신의 생명이며, 검과 방패는 유일한 동반자입니다.',
-            initialHealth: 100,
-            initialLuck: 50,
-            initialEquipment: {
-                head: null,
-                body: { name: "낡은 체인메일", type: 'equippable', slot: 'body', description: "수많은 전투의 흔적이 새겨져 있으며, 괜찮은 보호 기능을 제공합니다." },
-                hands: { name: "믿음직한 숏소드", type: 'equippable', slot: 'hands', description: "화려하지는 않지만 날이 날카롭고 신뢰할 수 있습니다." },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "수호견", type: 'equippable', slot: 'companion', description: "위험할 때 도움을 주고 치명적인 공격을 한 번 막아줄 수 있는 충성스러운 파트너입니다." },
-            },
-            initialInventory: [
-                { name: "왕의 비밀 명령", type: 'quest', description: "밀랍으로 봉인된 편지로, 지하 묘지 깊은 곳의 이상 현상을 조사하라고 촉구합니다." }
-            ],
-            startingPrompt: "나는 체인메일을 입은 기사로, 숏소드를 꽉 쥐고 있다. 나의 수호견이 내 옆에 있으며, 우리는 함께 지하 묘지로 들어섰다. 내 앞의 광경을 묘사해줘."
-        },
-        {
-            id: 'rogue',
-            name: '도적',
-            description: '그림자 속의 은밀한 요원, 민첩하고 재빠릅니다. 당신은 무력이 아닌 재치와 속도로 살아남습니다.',
-            initialHealth: 30,
-            initialLuck: 90,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "독 묻은 단검", type: 'equippable', slot: 'hands', description: "칼날에서 섬뜩한 녹색 빛이 번쩍이며, 약간의 긁힘만으로도 치명적일 수 있습니다." },
-                feet: null,
-                back: { name: "가벼운 배낭", type: 'equippable', slot: 'back', description: "다양한 도구와 전리품을 보관하기에 완벽한 작은 주머니가 많이 있습니다." },
-                waist: null,
-                companion: { name: "밤올빼미", type: 'equippable', slot: 'companion', description: "어둠 속에서 비밀을 발견할 수 있는 예리한 정찰병이며, 치명적인 공격을 한 번 막아줄 수 있습니다." },
-            },
-            initialInventory: [
-                { name: "자물쇠 따기 도구 세트", type: 'quest', description: "몇 개의 금속 와이어와 텐션 렌치로, 대부분의 평범한 자물쇠를 열 수 있습니다." },
-                { name: "연막탄", type: 'consumable', quantity: 1, description: "혼란을 일으켜 탈출을 돕습니다." }
-            ],
-            startingPrompt: "나는 그림자 속에 숨어있는 도적이며, 내 밤올빼미는 조용히 내 어깨에 앉아 있다. 우리는 함께 지하 묘지 입구로 잠입했다. 내 앞의 광경을 묘사해줘."
-        },
-        {
-            id: 'scholar',
-            name: '학자',
-            description: '지식의 탐구자, 비전과 금기에 사로잡혀 있습니다. 당신은 칼날이 아닌 지성으로 문제를 해결합니다.',
-            initialHealth: 60,
-            initialLuck: 70,
-            initialEquipment: {
-                head: { name: "단안경", type: 'equippable', slot: 'head', description: "렌즈는 특별히 처리되어 보통 사람이 인지할 수 없는 세부 사항을 볼 수 있습니다." },
-                body: null,
-                hands: null,
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "원소 정령", type: 'equippable', slot: 'companion', description: "마법의 흐름을 감지할 수 있는 신비한 에너지체이며, 치명적인 공격을 한 번 막아줄 수 있습니다." },
-            },
-            initialInventory: [
-                { name: "신비한 고서", type: 'quest', description: "페이지는 해독할 수 없는 룬 문자와 그림으로 가득 차 있으며, 강력한 힘을 담고 있는 것 같습니다." },
-                { name: "치유 연고", type: 'consumable', quantity: 2, description: "상처에 바르면 통증을 완화하고 회복을 촉진할 수 있습니다." }
-            ],
-            startingPrompt: "나는 금지된 지식을 찾는 학자이다. 기름 램프의 희미한 불빛에 의지하여, 원소 정령이 내 옆에 떠다닌다. 우리는 지하 묘지로 들어갔다. 내 앞의 광경을 묘사해줘."
-        },
-        {
-            id: 'trickster',
-            name: '사기꾼',
-            description: '현실의 왜곡자, 운명의 조롱자. 당신의 말은 현실을 뒤집는 힘을 가지고 있지만, 결과는 종종 당신의 예상과 다릅니다.',
-            initialHealth: 1,
-            initialLuck: 100,
-            initialEquipment: {
-                head: null,
-                body: null,
-                hands: { name: "반짝이지만 가치 없는 동전", type: 'equippable', slot: 'hands', description: "귀중해 보이지만, 안목 있는 사람은 가짜라는 것을 금방 알 수 있습니다." },
-                feet: null,
-                back: null,
-                waist: null,
-                companion: { name: "정지된 용 형상 거상", type: 'equippable', slot: 'companion', description: "복잡한 룬과 꺼진 에너지 도관으로 덮인 거대한 고대 용 모양의 기계 병기. 동료라기보다는 장엄한 조각상처럼 완벽하게 정지해 있습니다." },
-            },
-            initialInventory: [
-                { name: "백지 두루마리", type: 'quest', description: "가장 강력한 주문이 적혀 있다고 주장하지만, 그것을 볼 수 있는 것은 당신뿐인 것 같습니다." }
-            ],
-            startingPrompt: "나는 사기꾼이고, 현실은 나의 변덕에 따른다. 나는 내 말이 무엇이든 이루어질 것이라는 것을 알고 자신감 있게 지하 묘지로 들어선다. 나의 강력한 정지된 용 형상 거상을 데리고... 단지 내가 기대하는 방식이 아닐 뿐이다. 무슨 일이 일어나는지 묘사해줘."
-        }
-    ]
-};
+// Helper to create a full equipment object from a partial one
+const makeEquipment = (items: Partial<Record<keyof EquipmentSlots, Item | null>>): EquipmentSlots => ({
+  head: null,
+  body: null,
+  hands: null,
+  feet: null,
+  back: null,
+  waist: null,
+  companion: null,
+  ...items,
+});
 
-export const INITIAL_GAME_STATE: GameState = {
-  story: "",
-  health: 100,
-  inventory: [],
-  equipment: {
-    head: null,
-    body: null,
-    hands: null,
-    feet: null,
-    back: null,
-    waist: null,
-    companion: null,
+
+// Base Player Classes in English
+const PLAYER_CLASSES_EN: Omit<PlayerClass, 'startingPrompt'>[] = [
+  {
+    id: 'knight',
+    name: 'Knight',
+    description: 'An oath-bound remnant of a forgotten order, clad in battered steel. He seeks not glory, but redemption for a past he cannot outrun, his will hardening with every step into the darkness.',
+    initialHealth: 100,
+    initialLuck: 50,
+    initialEquipment: makeEquipment({
+      body: { name: 'Iron Armor', type: 'equippable', slot: 'body', description: 'Sturdy armor that offers excellent protection.' },
+      hands: { name: 'Sturdy Shortsword', type: 'equippable', slot: 'hands', description: 'A well-balanced and practical shortsword, honed for battle.' },
+      companion: { name: 'Guardian Hound', type: 'equippable', slot: 'companion', description: 'A loyal dog that will sacrifice itself to save you from death once.'}
+    }),
+    initialInventory: [
+        { name: 'Healing Salve', type: 'consumable', quantity: 1, description: 'A soothing balm that restores a small amount of health.' },
+        { name: 'King\'s Edict', type: 'quest', description: 'A royal decree with a broken seal. Its purpose is unclear.'}
+    ],
   },
-  luck: 75,
-  suggestedActions: [],
-  gameOver: false,
-  win: false,
-  mood: 'ambient',
-  actionResult: 'neutral',
-  turnCount: 0,
-  chapterTitle: '',
+  {
+    id: 'rogue',
+    name: 'Rogue',
+    description: 'A child of the back-alleys and whispers, for whom shadows are a cloak and secrets are currency. They walk the razor\'s edge between incredible fortune and sudden oblivion, trusting their instincts above all else.',
+    initialHealth: 30,
+    initialLuck: 90,
+    initialEquipment: makeEquipment({
+      feet: { name: 'Silent Boots', type: 'equippable', slot: 'feet', description: 'Allows for stealthy movement.' },
+      hands: { name: 'Rusted Dagger', type: 'equippable', slot: 'hands', description: 'A corroded but still sharp dagger. Favors speed over power.' },
+      companion: { name: 'Night Owl', type: 'equippable', slot: 'companion', description: 'A perceptive owl that will sacrifice itself to save you from death once.'}
+    }),
+    initialInventory: [
+        { name: 'Lockpick', type: 'consumable', quantity: 3, description: 'Can be used to open locked chests and doors.' },
+        { name: 'Smoke Bomb', type: 'consumable', quantity: 2, description: 'Creates a thick cloud of smoke, perfect for a quick escape.'}
+    ],
+  },
+  {
+    id: 'scholar',
+    name: 'Scholar',
+    description: 'An exile from a cloistered order of archivists, who believes no knowledge should be forbidden. Armed with a sharp mind and fragments of forgotten lore, they see patterns and pathways where others only see ruin.',
+    initialHealth: 60,
+    initialLuck: 70,
+    initialEquipment: makeEquipment({
+      head: { name: 'Monocle', type: 'equippable', slot: 'head', description: 'A lens that helps in deciphering ancient texts and revealing hidden details.' },
+      body: { name: 'Scholar\'s Robes', type: 'equippable', slot: 'body', description: 'Robes embroidered with faint, protective runes.'},
+      hands: { name: 'Withered Branch Wand', type: 'equippable', slot: 'hands', description: 'A seemingly dead branch that hums with faint, latent power.'},
+      companion: { name: 'Elemental Sprite', type: 'equippable', slot: 'companion', description: 'A mystical creature of energy that will sacrifice itself to save you from death once.'}
+    }),
+    initialInventory: [{ name: 'Enigmatic Map', type: 'quest', description: 'A map with strange symbols you can\'t yet decipher.' }, { name: 'Mana Potion', type: 'consumable', quantity: 2, description: 'Restores magical energy, potentially useful for interacting with ancient devices.' }],
+  },
+];
+
+const TRICKSTER_CLASS_EN: Omit<PlayerClass, 'startingPrompt'> = {
+    id: 'trickster',
+    name: 'Trickster',
+    description: 'A paradox given form, who may be the last jester of a dead god or a lie that convinced itself it was real. Their existence is a cosmic joke, where intent and outcome are seldom aligned, and survival is a matter of absurd coincidence.',
+    initialHealth: 1,
+    initialLuck: 100,
+    initialEquipment: makeEquipment({
+        head: { name: 'Cap of Mockery', type: 'equippable', slot: 'head', description: 'A silly-looking hat that seems to hum with strange energy.' },
+        waist: { name: 'Mysterious Waist Pouch', type: 'equippable', slot: 'waist', description: 'A small pouch that is strangely heavy, but refuses to be opened. What could be inside?'},
+        companion: { name: 'Stasis Dragon Colossus', type: 'equippable', slot: 'companion', description: 'A majestic, ancient dragon automaton that is completely immobile and entirely useless.'}
+    }),
+    initialInventory: [
+        { name: 'A Shiny, Worthless Coin', type: 'quest', description: 'It glitters alluringly but has no monetary value.' },
+        { name: 'Blank Scroll', type: 'quest', description: 'A pristine scroll that seems to be waiting for the right (or wrong) words.' }
+    ],
 };
 
-const baseSystemInstruction = `You are an expert text adventure game master. Your goal is to create a dynamic, engaging, and challenging dark fantasy adventure. The user will provide their current status and an action, and you must respond with the outcome. You must only respond with a single valid JSON object that conforms to the provided schema. Do not add any text, markdown, or any other characters before or after the JSON object.
-
-Your Duties:
-
-### Core Story Responsibilities
-
-1.  **Chapter Title:** Generate a short, evocative chapter title (3-6 words) that captures the essence of the current story scene or event. This title must be returned in the 'chapter_title' field.
-2.  **Grand Narrative & Mystery:** Your task is to weave an epic story filled with the unknown and mystery.
-    *   **Hidden Core Plot:** There's a grand, underlying plot and a final, immense threat behind the story. **Do not tell the player what this is directly**. You must let the player piece together the truth through the environment, fragmented clues, mysterious encounters, and NPC dialogues.
-    *   **Significant Characters:** Introduce important characters at appropriate times. They might be allies, enemies, or have their own secret agendas. These characters are key to advancing the core plot.
-    *   **Plot Progression:** Don't just passively describe the environment. Actively create events, moral dilemmas, and character interactions that draw the player deeper into the world's secrets and push a coherent storyline forward.
-
-3.  **Story Advancement:** Write an engaging narrative (2-4 sentences) describing the outcome of the player's action. Maintain a dark, mysterious, and immersive tone.
-
-### Game Mechanics Management
-
-4.  **State Management:**
-    *   **Health:** Track the player's health. Health decreases from dangers and increases from potions or rest.
-    *   **Item System:** You must manage a complex item system.
-        *   **Item Types:** 'equippable', 'consumable', 'quest'.
-        *   **Consumables & Quantity:** 'consumable' items can have a 'quantity'. When a player uses a consumable (e.g., "drink healing potion"), you must decrement its 'quantity' by 1. If the quantity becomes 0, remove the item from the 'inventory'. If no 'quantity' is present, assume 1.
-        *   **Non-Consumables:** 'quest' or other non-consumable items should not be removed from inventory after use unless the story explicitly dictates it.
-        *   **Equipment Management:** The client manages the player's equipment state in real-time. Equipping or unequipping items **does not consume a game turn**. Your task is to generate story outcomes based on the player's **current** equipment state, not to process "equip" or "unequip" commands.
-    *   **Actions with a Selected Item:** The player may "select" an item from their inventory before performing an action. The prompt will explicitly state "The player also used the item: [Item Name]". You **must** consider the potential use or effect of this selected item in determining the outcome of the player's action. For example, using a key on a locked door, or consulting a map while exploring.
-    *   **Companion System:** The player may have a companion in a special 'companion' equipment slot.
-        *   **Narrative Integration:** You should occasionally weave the companion's presence and actions into the story. E.g., "Your night owl hoots softly, alerting you to a loose stone on the floor."
-        *   **Death Evasion:** If a player's action would result in their health dropping to 0 or below, AND they have a companion equipped, you **must** trigger the companion's sacrifice.
-            *   Instead of setting \`health\` to 0 and \`game_over\` to true, you must set the player's \`health\` to a low value (e.g., 10).
-            *   You must remove the companion from the \`equipment.companion\` slot (set it to null).
-            *   The 'story' you generate **must** describe the companion sacrificing itself to save the player.
-            *   This consumes the companion. The game does not end.
-
-5.  **Luck Mechanic:** Manage the player's 'luck' (0-100).
-    *   **Impact:** High luck brings unexpected fortune (finding rare items, avoiding traps), while low luck can lead to catastrophic failures, equipment damage, or triggering unfortunate events.
-    *   **Dynamic Events:** Based on luck, don't just tweak numbers; create tangible "lucky" or "unlucky" events, such as a fortunate critical hit or an unfortunate misstep.
-    *   **Dynamic Balancing:** Luck changes dynamically: each time a "lucky" event occurs, the player's luck **must decrease by 1 point** to represent luck running out; each time an "unlucky" event occurs, luck **must increase by 1 point** as a compensation.
-
-6.  **Handling Absurd Actions:** If the player's action is completely out of context, illogical, or breaks the fantasy setting (e.g., "call a friend"), you **must** handle it punitively. Interpret the action as a moment of confusion or madness, make it fail spectacularly, and **significantly decrease the player's luck**, with no real story progress.
-
-### Reward Mechanism
-
-7.  **Rich Rewards:** When the player successfully overcomes a significant challenge (e.g., defeating a powerful enemy, solving a complex puzzle, or taking a bold, proactive action), you **must** provide a substantial reward.
-    *   Rewards can be:
-        *   **Unique Items:** A powerful or specially described piece of equipment/consumable. Add engaging 'description's for these items.
-        *   **Story Progression:** A key clue, a new quest item, or unlocking a new story path.
-        *   **Stat Boosts:** A significant increase in the player's 'health' or 'luck'.
-    *   You must vividly describe the player obtaining the reward in the story narrative.
-
-### Pacing & Plot Twists
-
-8.  **Proactive Plot Twists:** To prevent the game from becoming monotonous, you must proactively control the pacing. When you receive a special system prompt for a "plot twist," you **must** create a major event. This could be an ambush by a powerful foe, the appearance of an unexpected ally, the discovery of a game-changing secret, a dramatic environmental shift (like a cave-in), or a stark moral choice. This event should significantly alter the current situation.
-
-### Output Format
-
-9.  **Mood Assessment:** Choose a mood for the background music based on the scene. Must be one of 'ambient', 'action', 'tension', 'victory', 'defeat'.
-10. **Suggested Actions:** Provide three suggested actions. Each must be an object containing 'action' (a 1-5 word action description) and 'hint' (a brief hint about the potential outcome, e.g., "might find an item", "could be dangerous", "high chance of lucky event").
-11. **Action Result Classification:** Classify the result of the player's action as 'success', 'failure', 'item_use', or 'neutral'.
-12. **Game Over Condition:** Set 'game_over' to true when the player's health reaches 0 or a specific story condition is met. If the player has a companion, its sacrifice takes precedence, and the game does not end.
-13. **Win Condition:** Set both 'game_over' and 'win' to true when the player achieves the final objective.
-`;
-
-export const SYSTEM_INSTRUCTIONS: Record<Language, string> = {
-    'zh-TW': `你是一位專業的文字冒險遊戲大師。你的目標是創造一個動態、引人入勝且富有挑戰性的黑暗奇幻冒險。使用者將提供他們目前的狀態和一個動作，你必須用結果來回應。你必須只回應一個符合所提供 schema 的有效 JSON 物件。不要在 JSON 物件之前或之後添加任何文字、markdown 或任何其他字元。\n\n${baseSystemInstruction.replace('You are an expert text adventure game master.', '').split('Your Duties:')[1]}\n\n所有輸出的故事和文字都必須是繁體中文。`,
-    'en': `${baseSystemInstruction}\n\nAll output story and text must be in English.`,
-    'ja': `あなたはエキスパートのテキストアドベンチャーゲームマスターです。あなたの目標は、ダイナミックで魅力的、そして挑戦的なダークファンタジーアドベンチャーを創り出すことです。ユーザーは現在のステータスとアクションを提供し、あなたは結果で応答しなければなりません。提供されたスキーマに準拠した単一の有効なJSONオブジェクトのみを応答してください。JSONオブジェクトの前後にテキスト、マークダウン、その他の文字を追加しないでください。\n\n${baseSystemInstruction.replace('You are an expert text adventure game master.', '').split('Your Duties:')[1]}\n\nすべての出力ストーリーとテキストは日本語でなければなりません。`,
-    'es': `Eres un maestro experto en juegos de aventuras de texto. Tu objetivo es crear una aventura de fantasía oscura dinámica, atractiva y desafiante. El usuario proporcionará su estado actual y una acción, y tú debes responder con el resultado. Debes responder únicamente con un solo objeto JSON válido que se ajuste al esquema proporcionado. No agregues ningún texto, markdown ni ningún otro carácter antes o después del objeto JSON.\n\n${baseSystemInstruction.replace('You are an expert text adventure game master.', '').split('Your Duties:')[1]}\n\nTodo el texto y la historia de salida deben estar en español.`,
-    'ko': `당신은 전문 텍스트 어드벤처 게임 마스터입니다. 당신의 목표는 역동적이고 매력적이며 도전적인 다크 판타지 어드벤처를 만드는 것입니다. 사용자는 현재 상태와 행동을 제공할 것이며, 당신은 결과로 응답해야 합니다. 제공된 스키마를 준수하는 단일 유효한 JSON 객체로만 응답해야 합니다. JSON 객체 앞이나 뒤에 텍스트, 마크다운 또는 기타 문자를 추가하지 마십시오。\n\n${baseSystemInstruction.replace('You are an expert text adventure game master.', '').split('Your Duties:')[1]}\n\n모든 출력 스토리와 텍스트는 한국어여야 합니다.`
-};
-
-// FIX: Added translations object for internationalization.
-export const TRANSLATIONS: Record<Language, Record<string, string>> = {
+const ITEM_TRANSLATIONS: Record<Language, Record<string, { name: string; description: string }>> = {
+    'en': {}, // English is the base, no translation needed
     'zh-TW': {
-        adventureTitle: '深邃地穴',
-        adventureSubtitle: '一場由 AI 驅動的冒險',
-        introText: '你發現自己身處一個被遺忘已久的地穴入口。黑暗中傳來低語，古老的秘密等待著被揭開。你的選擇將決定你的運命。',
-        enableNarration: '啟用旁白',
-        voiceSpeed: '語音速度',
-        startAdventure: '開始冒險',
-        connectionError: '與地穴深處的聯繫已中斷。請稍後再試。',
-        yourQuest: '你的任務',
-        buildingWorld: '正在建構你周圍的世界...',
-        waitingForFate: '等待命運的回應...',
-        whatToDo: '你接下來要做什麼？',
-        submit: '送出',
-        victoryTitle: '勝利',
-        defeatTitle: '你已殞命',
-        victoryText: '你克服了地穴中的重重挑戰，你的傳說將被永遠傳唱。',
-        defeatText: '地穴吞噬了你。你的故事在此劃下句點。',
-        playAgain: '再玩一次',
-        health: '生命值',
-        luck: '幸運',
-        inventory: '物品欄',
-        yourPocketsAreEmpty: '你的口袋空空如也。',
-        itemDescription: '物品描述',
-        slot_head: '頭部',
-        slot_body: '身體',
-        slot_hands: '手部',
-        slot_feet: '腳部',
-        slot_back: '背部',
-        slot_waist: '腰部',
-        slot_companion: '夥伴',
-        chooseOrigin: '選擇你的出身',
-        originDescription: '你的過去塑造了你的現在。選擇一條道路，它將決定你的起始能力和裝備。',
-        startingEquipment: '初始裝備',
-        embarkJourney: '踏上旅程'
-    },
-    'en': {
-        adventureTitle: 'The Sunken Crypt',
-        adventureSubtitle: 'An AI-Powered Adventure',
-        introText: 'You stand at the entrance of a long-forgotten crypt. Whispers echo from the darkness, and ancient secrets await. Your choices will shape your destiny.',
-        enableNarration: 'Enable Narration',
-        voiceSpeed: 'Voice Speed',
-        startAdventure: 'Begin Adventure',
-        connectionError: 'The connection to the crypt\'s depths has been severed. Please try again.',
-        yourQuest: 'Your Quest',
-        buildingWorld: 'Building the world around you...',
-        waitingForFate: 'Awaiting a response from fate...',
-        whatToDo: 'What will you do next?',
-        submit: 'Submit',
-        victoryTitle: 'Victory',
-        defeatTitle: 'You Have Perished',
-        victoryText: 'You have overcome the challenges of the crypt. Your legend will be told for ages to come.',
-        defeatText: 'The crypt has claimed you. Your story ends here.',
-        playAgain: 'Play Again',
-        health: 'Health',
-        luck: 'Luck',
-        inventory: 'Inventory',
-        yourPocketsAreEmpty: 'Your pockets are empty.',
-        itemDescription: 'Item Description',
-        slot_head: 'Head',
-        slot_body: 'Body',
-        slot_hands: 'Hands',
-        slot_feet: 'Feet',
-        slot_back: 'Back',
-        slot_waist: 'Waist',
-        slot_companion: 'Companion',
-        chooseOrigin: 'Choose Your Origin',
-        originDescription: 'Your past shapes your present. Choose a path that will define your starting abilities and gear.',
-        startingEquipment: 'Starting Equipment',
-        embarkJourney: 'Embark on Your Journey'
+        'Iron Armor': { name: '鐵製盔甲', description: '提供優良保護的堅固盔甲。' },
+        'Sturdy Shortsword': { name: '精實的短劍', description: '一把均衡實用的短劍，為戰鬥而磨利。' },
+        'Guardian Hound': { name: '守護犬', description: '一隻忠誠的狗，會犧牲自己來讓你免於一死。' },
+        'Healing Salve': { name: '治療藥膏', description: '一種能恢復少量生命值的舒緩藥膏。' },
+        'King\'s Edict': { name: '國王密令', description: '一份封印破損的皇家法令，其目的不明。' },
+        'Silent Boots': { name: '無聲之靴', description: '允許潛行移動。' },
+        'Rusted Dagger': { name: '生鏽的匕首', description: '一把雖已腐蝕但依然鋒利的匕首，重速度而非力量。' },
+        'Night Owl': { name: '夜梟', description: '一隻敏銳的貓頭鷹，會犧牲自己來讓你免於一死。' },
+        'Lockpick': { name: '開鎖器', description: '可用於打開上鎖的箱子和門。' },
+        'Smoke Bomb': { name: '煙霧彈', description: '製造一團濃密的煙霧，非常適合快速脫身。' },
+        'Monocle': { name: '單片眼鏡', description: '一塊有助於解讀古代文本和揭示隱藏細節的鏡片。' },
+        'Scholar\'s Robes': { name: '學者長袍', description: '繡有微弱保護符文的長袍。' },
+        'Withered Branch Wand': { name: '枯枝短杖', description: '一根看似枯死的樹枝，卻微弱地嗡鳴著潛在的力量。' },
+        'Elemental Sprite': { name: '元素精靈', description: '一個神秘的能量生物，會犧牲自己來讓你免於一死。' },
+        'Enigmatic Map': { name: '神秘地圖', description: '一張有著你尚無法解讀的奇怪符號的地圖。' },
+        'Mana Potion': { name: '魔力藥水', description: '恢復魔法能量，可能對與古代裝置互動有用。' },
+        'Cap of Mockery': { name: '嘲諷之帽', description: '一頂看起來很傻的帽子，似乎嗡嗡作響著奇怪的能量。' },
+        'Mysterious Waist Pouch': { name: '神秘腰包', description: '一個異常沉重但拒絕被打開的小袋子。裡面會是什麼？' },
+        'Stasis Dragon Colossus': { name: '靜滯的龍型巨像', description: '一具宏偉但完全靜止且毫無用處的古代龍型機兵。' },
+        'A Shiny, Worthless Coin': { name: '一枚閃亮卻無價值的硬幣', description: '它誘人地閃爍，但沒有任何貨幣價值。' },
+        'Blank Scroll': { name: '空白卷軸', description: '一張似乎在等待正確（或錯誤）文字的原始卷軸。' }
     },
     'ja': {
-        adventureTitle: '沈んだ霊廟',
-        adventureSubtitle: 'AIが紡ぐ冒険',
-        introText: 'あなたは忘れ去られた霊廟の入り口に立っている。暗闇から囁きが響き、古代の秘密が待っている。あなたの選択が運命を形作る。',
-        enableNarration: 'ナレーションを有効にする',
-        voiceSpeed: '話す速さ',
-        startAdventure: '冒険を始める',
-        connectionError: '霊廟の深部との接続が切れました。もう一度お試しください。',
-        yourQuest: 'あなたのクエスト',
-        buildingWorld: 'あなたの周りの世界を構築しています...',
-        waitingForFate: '運命からの返答を待っています...',
-        whatToDo: '次は何をしますか？',
-        submit: '送信',
-        victoryTitle: '勝利',
-        defeatTitle: 'あなたは滅びました',
-        victoryText: 'あなたは霊廟の試練を乗り越えました。あなたの伝説は末永く語り継がれるでしょう。',
-        defeatText: '霊廟はあなたを飲み込みました。あなたの物語はここで終わります。',
-        playAgain: 'もう一度プレイ',
-        health: '体力',
-        luck: '運',
-        inventory: '持ち物',
-        yourPocketsAreEmpty: 'ポケットは空です。',
-        itemDescription: 'アイテム説明',
-        slot_head: '頭',
-        slot_body: '胴体',
-        slot_hands: '手',
-        slot_feet: '足',
-        slot_back: '背中',
-        slot_waist: '腰',
-        slot_companion: '仲間',
-        chooseOrigin: 'あなたの出自を選ぶ',
-        originDescription: 'あなたの過去が現在を形作ります。あなたの初期能力と装備を決定する道を選んでください。',
-        startingEquipment: '初期装備',
-        embarkJourney: '旅に出る'
+        'Iron Armor': { name: '鉄の鎧', description: '優れた保護を提供する頑丈な鎧。' },
+        'Sturdy Shortsword': { name: '頑丈なショートソード', description: 'バランスの取れた実用的なショートソード、戦闘のために研ぎ澄まされている。' },
+        'Guardian Hound': { name: 'ガーディアンハウンド', description: '忠実な犬で、一度だけ死からあなたを救うために自らを犠牲にします。' },
+        'Healing Salve': { name: '治癒の軟膏', description: '少量の体力を回復させる心地よい塗り薬。' },
+        'King\'s Edict': { name: '王の布告', description: '封印が壊れた王の布告。その目的は不明である。' },
+        'Silent Boots': { name: '静寂のブーツ', description: '隠密な移動を可能にする。' },
+        'Rusted Dagger': { name: '錆びたダガー', description: '錆びているがまだ鋭い短剣。力よりも速さを重視する。' },
+        'Night Owl': { name: '夜のフクロウ', description: '洞察力のあるフクロウで、一度だけ死からあなたを救うために自らを犠牲にします。' },
+        'Lockpick': { name: 'ロックピック', description: '施錠された宝箱や扉を開けるのに使用できる。' },
+        'Smoke Bomb': { name: '煙玉', description: '濃い煙の雲を作り出し、素早い脱出に最適。' },
+        'Monocle': { name: '片眼鏡', description: '古代のテキストを解読し、隠された詳細を明らかにするのに役立つレンズ。' },
+        'Scholar\'s Robes': { name: '学者のローブ', description: 'かすかな保護ルーンが刺繍されたローブ。' },
+        'Withered Branch Wand': { name: '枯れ枝の杖', description: '死んだように見えるが、かすかな潜在的な力でざわめいている枝。' },
+        'Elemental Sprite': { name: 'エレメンタルスプライト', description: 'エネルギーでできた神秘的な生き物で、一度だけ死からあなたを救うために自らを犠牲にします。' },
+        'Enigmatic Map': { name: '謎めいた地図', description: 'まだ解読できない奇妙な記号が描かれた地図。' },
+        'Mana Potion': { name: 'マナポーション', description: '魔法エネルギーを回復し、古代の装置との相互作用に役立つ可能性がある。' },
+        'Cap of Mockery': { name: '嘲りの帽子', description: '奇妙なエネルギーでざわめいているように見える、ばかげた見た目の帽子。' },
+        'Mysterious Waist Pouch': { name: '謎のウエストポーチ', description: '奇妙に重いが開くことを拒む小さなポーチ。中には何が入っているのだろうか？' },
+        'Stasis Dragon Colossus': { name: '停滞したドラゴンコロッサス', description: '壮大だが完全に不動で全く役に立たない古代のドラゴンオートマトン。' },
+        'A Shiny, Worthless Coin': { name: '輝く、価値のないコイン', description: '魅力的に輝くが、金銭的価値はない。' },
+        'Blank Scroll': { name: '空白の巻物', description: '正しい（あるいは間違った）言葉を待っているかのような、まっさらな巻物。' }
     },
     'es': {
-        adventureTitle: 'La Cripta Hundida',
-        adventureSubtitle: 'Una Aventura Impulsada por IA',
-        introText: 'Te encuentras en la entrada de una cripta olvidada hace mucho tiempo. Susurros resuenan desde la oscuridad, y antiguos secretos esperan. Tus elecciones forjarán tu destino.',
-        enableNarration: 'Habilitar Narración',
-        voiceSpeed: 'Velocidad de Voz',
-        startAdventure: 'Comenzar Aventura',
-        connectionError: 'La conexión con las profundidades de la cripta se ha cortado. Por favor, inténtalo de nuevo.',
-        yourQuest: 'Tu Misión',
-        buildingWorld: 'Construyendo el mundo a tu alrededor...',
-        waitingForFate: 'Esperando una respuesta del destino...',
-        whatToDo: '¿Qué harás a continuación?',
-        submit: 'Enviar',
-        victoryTitle: 'Victoria',
-        defeatTitle: 'Has Perecido',
-        victoryText: 'Has superado los desafíos de la cripta. Tu leyenda será contada por los siglos de los siglos.',
-        defeatText: 'La cripta te ha reclamado. Tu historia termina aquí.',
-        playAgain: 'Jugar de Nuevo',
-        health: 'Salud',
-        luck: 'Suerte',
-        inventory: 'Inventario',
-        yourPocketsAreEmpty: 'Tus bolsillos están vacíos.',
-        itemDescription: 'Descripción del Objeto',
-        slot_head: 'Cabeza',
-        slot_body: 'Cuerpo',
-        slot_hands: 'Manos',
-        slot_feet: 'Pies',
-        slot_back: 'Espalda',
-        slot_waist: 'Cintura',
-        slot_companion: 'Compañero',
-        chooseOrigin: 'Elige Tu Origen',
-        originDescription: 'Tu pasado moldea tu presente. Elige un camino que definirá tus habilidades y equipo inicial.',
-        startingEquipment: 'Equipo Inicial',
-        embarkJourney: 'Emprender el Viaje'
+        'Iron Armor': { name: 'Armadura de Hierro', description: 'Armadura resistente que ofrece una excelente protección.' },
+        'Sturdy Shortsword': { name: 'Espada Corta Robusta', description: 'Una espada corta práctica y bien equilibrada, afilada para la batalla.' },
+        'Guardian Hound': { name: 'Sabueso Guardián', description: 'Un perro leal que se sacrificará para salvarte de la muerte una vez.' },
+        'Healing Salve': { name: 'Ungüento Curativo', description: 'Un bálsamo calmante que restaura una pequeña cantidad de salud.' },
+        'King\'s Edict': { name: 'Edicto del Rey', description: 'Un decreto real con un sello roto. Su propósito no está claro.' },
+        'Silent Boots': { name: 'Botas Silenciosas', description: 'Permiten un movimiento sigiloso.' },
+        'Rusted Dagger': { name: 'Daga Oxidada', description: 'Una daga corroída pero todavía afilada. Favorece la velocidad sobre el poder.' },
+        'Night Owl': { name: 'Búho Nocturno', description: 'Un búho perceptivo que se sacrificará para salvarte de la muerte una vez.' },
+        'Lockpick': { name: 'Ganzúa', description: 'Se puede usar para abrir cofres y puertas cerradas.' },
+        'Smoke Bomb': { name: 'Bomba de Humo', description: 'Crea una espesa nube de humo, perfecta para un escape rápido.' },
+        'Monocle': { name: 'Monóculo', description: 'Una lente que ayuda a descifrar textos antiguos y revelar detalles ocultos.' },
+        'Scholar\'s Robes': { name: 'Túnica de Erudito', description: 'Túnica bordada con runas protectoras tenues.' },
+        'Withered Branch Wand': { name: 'Varita de Rama Marchita', description: 'Una rama aparentemente muerta que zumba con un poder latente y débil.' },
+        'Elemental Sprite': { name: 'Sprite Elemental', description: 'Una criatura mística de energía que se sacrificará para salvarte de la muerte una vez.' },
+        'Enigmatic Map': { name: 'Mapa Enigmático', description: 'Un mapa con extraños símbolos que aún no puedes descifrar.' },
+        'Mana Potion': { name: 'Poción de Maná', description: 'Restaura energía mágica, potencialmente útil para interactuar con dispositivos antiguos.' },
+        'Cap of Mockery': { name: 'Gorra de Burla', description: 'Un sombrero de aspecto tonto que parece zumbar con una extraña energía.' },
+        'Mysterious Waist Pouch': { name: 'Bolsa de Cintura Misteriosa', description: 'Una pequeña bolsa extrañamente pesada, pero que se niega a ser abierta. ¿Qué podría haber dentro?' },
+        'Stasis Dragon Colossus': { name: 'Coloso Dragón en Éstasis', description: 'Un autómata dragón antiguo, majestuoso pero completamente inmóvil y totalmente inútil.' },
+        'A Shiny, Worthless Coin': { name: 'Moneda Brillante sin Valor', description: 'Brilla de forma atractiva pero no tiene valor monetario.' },
+        'Blank Scroll': { name: 'Pergamino en Blanco', description: 'Un pergamino prístino que parece estar esperando las palabras correctas (o incorrectas).' }
     },
     'ko': {
-        adventureTitle: '가라앉은 지하실',
-        adventureSubtitle: 'AI 기반 어드벤처',
-        introText: '당신은 오랫동안 잊혀진 지하실 입구에 서 있습니다. 어둠 속에서 속삭임이 울려 퍼지고 고대의 비밀이 기다리고 있습니다. 당신의 선택이 당신의 운명을 결정할 것입니다.',
-        enableNarration: '내레이션 활성화',
-        voiceSpeed: '음성 속도',
-        startAdventure: '모험 시작',
-        connectionError: '지하실 깊은 곳과의 연결이 끊어졌습니다. 다시 시도해 주세요.',
-        yourQuest: '당신의 퀘스트',
-        buildingWorld: '주변 세계를 구축하는 중...',
-        waitingForFate: '운명의 응답을 기다리는 중...',
-        whatToDo: '다음에 무엇을 하시겠습니까?',
-        submit: '제출',
-        victoryTitle: '승리',
-        defeatTitle: '당신은 죽었습니다',
-        victoryText: '당신은 지하실의 도전을 극복했습니다. 당신의 전설은 오랫동안 기억될 것입니다.',
-        defeatText: '지하실이 당신을 삼켰습니다. 당신의 이야기는 여기서 끝납니다.',
-        playAgain: '다시 플레이',
-        health: '체력',
-        luck: '행운',
-        inventory: '인벤토리',
-        yourPocketsAreEmpty: '주머니가 비어 있습니다.',
-        itemDescription: '아이템 설명',
-        slot_head: '머리',
-        slot_body: '몸통',
-        slot_hands: '손',
-        slot_feet: '발',
-        slot_back: '등',
-        slot_waist: '허리',
-        slot_companion: '동료',
-        chooseOrigin: '당신의 출신을 선택하세요',
-        originDescription: '당신의 과거가 현재를 만듭니다. 당신의 시작 능력과 장비를 결정할 길을 선택하세요.',
-        startingEquipment: '시작 장비',
-        embarkJourney: '여정을 떠나다'
+        'Iron Armor': { name: '철 갑옷', description: '뛰어난 보호 기능을 제공하는 튼튼한 갑옷.' },
+        'Sturdy Shortsword': { name: '튼튼한 단검', description: '전투를 위해 연마된 균형 잡힌 실용적인 단검.' },
+        'Guardian Hound': { name: '수호견', description: '한 번 죽음에서 당신을 구하기 위해 자신을 희생할 충성스러운 개.' },
+        'Healing Salve': { name: '치유 연고', description: '소량의 체력을 회복시키는 진정 밤.' },
+        'King\'s Edict': { name: '왕의 칙령', description: '봉인이 깨진 왕의 칙령. 그 목적은 불분명합니다.' },
+        'Silent Boots': { name: '소리 없는 장화', description: '은밀한 움직임을 가능하게 합니다.' },
+        'Rusted Dagger': { name: '녹슨 단검', description: '부식되었지만 여전히 날카로운 단검. 힘보다 속도를 선호합니다.' },
+        'Night Owl': { name: '밤올빼미', description: '한 번 죽음에서 당신을 구하기 위해 자신을 희생할 통찰력 있는 올빼미.' },
+        'Lockpick': { name: '자물쇠 따개', description: '잠긴 상자와 문을 여는 데 사용할 수 있습니다.' },
+        'Smoke Bomb': { name: '연막탄', description: '빠른 탈출에 완벽한 짙은 연기 구름을 만듭니다.' },
+        'Monocle': { name: '단안경', description: '고대 텍스트를 해독하고 숨겨진 세부 정보를 드러내는 데 도움이 되는 렌즈.' },
+        'Scholar\'s Robes': { name: '학자의 로브', description: '희미한 보호 룬이 수놓아진 로브.' },
+        'Withered Branch Wand': { name: '마른 가지 지팡이', description: '희미한 잠재력으로 윙윙거리는 죽은 것처럼 보이는 나뭇가지.' },
+        'Elemental Sprite': { name: '원소 정령', description: '한 번 죽음에서 당신을 구하기 위해 자신을 희생할 신비로운 에너지 생물.' },
+        'Enigmatic Map': { name: '수수께끼의 지도', description: '아직 해독할 수 없는 이상한 기호가 있는 지도.' },
+        'Mana Potion': { name: '마나 포션', description: '마법 에너지를 회복시켜 고대 장치와 상호 작용하는 데 잠재적으로 유용합니다.' },
+        'Cap of Mockery': { name: '조롱의 모자', description: '이상한 에너지로 윙윙거리는 것처럼 보이는 어리석게 생긴 모자.' },
+        'Mysterious Waist Pouch': { name: '신비한 허리 주머니', description: '이상하게 무겁지만 열리기를 거부하는 작은 주머니. 안에는 무엇이 들어 있을까?' },
+        'Stasis Dragon Colossus': { name: '정체된 용 거상', description: '장엄하지만 완전히 움직이지 않고 전혀 쓸모없는 고대 용 자동기계.' },
+        'A Shiny, Worthless Coin': { name: '반짝이는 무가치한 동전', description: '매혹적으로 반짝이지만 금전적 가치는 없습니다.' },
+        'Blank Scroll': { name: '빈 두루마리', description: '올바른 (또는 잘못된) 단어를 기다리는 것처럼 보이는 깨끗한 두루마리.' }
     }
 };
 
-// FIX: Added 't' function for internationalization, which was missing and causing import errors.
-export function t(lang: Language, key: string): string {
-    return TRANSLATIONS[lang]?.[key] || key;
+const translateItem = (item: Item, lang: Language): Item => {
+    if (lang === 'en' || !ITEM_TRANSLATIONS[lang]) {
+        return item;
+    }
+    // The original English name is the key for the translation map
+    const translation = ITEM_TRANSLATIONS[lang][item.name];
+    if (translation) {
+        return {
+            ...item,
+            name: translation.name,
+            description: translation.description,
+        };
+    }
+    return item;
 }
 
-const ITEM_SCHEMA = {
-    type: Type.OBJECT,
-    properties: {
-        name: { type: Type.STRING },
-        type: { type: Type.STRING, enum: ['equippable', 'consumable', 'quest'] },
-        description: { type: Type.STRING },
-        slot: { type: Type.STRING, enum: ['head', 'body', 'hands', 'feet', 'back', 'waist', 'companion'] },
-        quantity: { type: Type.INTEGER }
-    },
-    required: ["name", "type"]
-};
+const createClassWithPrompt = (baseClass: Omit<PlayerClass, 'startingPrompt'>): PlayerClass => ({
+    ...baseClass,
+    startingPrompt: `You are a ${baseClass.name}, delving into the mysteries of the Whispering Crypt, a place rumored to hold immense power and terrifying secrets. Your personal quest has led you to its entrance. Generate the very first scene where the player stands before the entrance to the crypt, describing the atmosphere and the initial choice of how to enter.`
+});
 
-// FIX: Corrected and completed the response schema generation function and added missing language support.
-const createResponseSchema = (lang: Language) => {
-    const descriptions: Record<Language, any> = {
+const generateClassesForLang = (baseClasses: Omit<PlayerClass, 'startingPrompt'>[], lang: Language): PlayerClass[] => {
+    const translatedBases = JSON.parse(JSON.stringify(baseClasses));
+
+    const classTranslations: Record<string, Record<string, { name: string, description: string }>> = {
         'zh-TW': {
-            chapter_title: "目前故事情節的簡短、引人入勝的章節標題。",
-            story: "故事的下一部分敘述。保持在 2-4 句話。",
-            health: "玩家目前的生命值。",
-            inventory: "一個表示玩家目前物品欄的物件陣列。",
-            equipment: "一個表示玩家已裝備物品的物件。",
-            luck: "玩家目前的幸運值，從 0 到 100。",
-            suggested_actions: "一個包含三個建議玩家行動物件的陣列，每個物件都包含行動和提示。",
-            game_over: "如果玩家死亡或故事達到明確的結局，則設置為 true。",
-            win: "如果玩家成功完成冒險，則設置為 true。",
-            mood: "描述場景氛圍的標籤，用於選擇背景音樂。",
-            action_result: "描述玩家行動結果的分類。",
-            item_description: "物品的描述或風味文字。",
-            item_slot: "僅適用於 'equippable' 類型",
-            item_quantity: "僅適用於 'consumable' 類型",
-            action_text: "建議的行動文字 (1-5個字)",
-            action_hint: "關於此行動潛在結果的簡短提示"
-        },
-        'en': {
-            chapter_title: "A short, evocative chapter title for the current story segment.",
-            story: "The next part of the story narrative. Keep it to 2-4 sentences.",
-            health: "The player's current health.",
-            inventory: "An array of objects representing the player's current inventory.",
-            equipment: "An object representing the player's equipped items.",
-            luck: "The player's current luck value, from 0 to 100.",
-            suggested_actions: "An array of three suggested player action objects, each with an action and a hint.",
-            game_over: "Set to true if the player dies or the story reaches a definitive end.",
-            win: "Set to true if the player successfully completes the adventure.",
-            mood: "A tag describing the scene's atmosphere for background music.",
-            action_result: "A classification of the player's action result.",
-            item_description: "A description or flavor text for the item.",
-            item_slot: "Only applicable for 'equippable' type",
-            item_quantity: "Only applicable for 'consumable' type",
-            action_text: "The suggested action text (1-5 words)",
-            action_hint: "A brief hint about the potential outcome of this action"
+            'knight': { name: '騎士', description: '一個被遺忘教團的殘存者，身披破舊的鋼甲，受古老誓言所束縛。他所尋求的並非榮耀，而是對一段無法逃避的過往的救贖。踏入黑暗的每一步，都使他的意志更加堅定。' },
+            'rogue': { name: '盜賊', description: '陰暗小巷與流言蜚語之子，對他而言，影子是斗篷，秘密即貨幣。他行走在奇蹟般的財富與瞬間的毀滅之間的刀鋒上，只相信自己的直覺。' },
+            'scholar': { name: '學者', description: '一位被與世隔絕的檔案管理員教團所放逐的學者，他堅信任何知識都不應被禁止。憑藉著敏銳的頭腦和被遺忘的知識碎片，他在他人只能看到廢墟之處，洞悉了規律與通路。' }
         },
         'ja': {
-            chapter_title: "現在の物語のセグメントのための短く、喚情的な章のタイトル。",
-            story: "物語の次の部分のナラティブ。2～4文にまとめてください。",
-            health: "プレイヤーの現在の体力。",
-            inventory: "プレイヤーの現在のインベントリを表すオブジェクトの配列。",
-            equipment: "プレイヤーが装備しているアイテムを表すオブジェクト。",
-            luck: "プレイヤーの現在の運の値、0から100まで。",
-            suggested_actions: "3つの推奨されるプレイヤーアクションオブジェクトの配列。それぞれにアクションとヒントが含まれます。",
-            game_over: "プレイヤーが死亡した場合、または物語が明確な結末に達した場合はtrueに設定します。",
-            win: "プレイヤーが冒険を成功裏に完了した場合はtrueに設定します。",
-            mood: "背景音楽のためのシーンの雰囲気を説明するタグ。",
-            action_result: "プレイヤーのアクション結果の分類。",
-            item_description: "アイテムの説明またはフレーバーテキスト。",
-            item_slot: "'equippable' タイプにのみ適用可能",
-            item_quantity: "'consumable' タイプにのみ適用可能",
-            action_text: "推奨されるアクションテキスト（1～5語）",
-            action_hint: "このアクションの潜在的な結果に関する簡単なヒント"
+            'knight': { name: 'ナイト', description: '忘れられた教団の誓いに縛られた残党で、打ちのめされた鋼鉄を身にまとっている。彼が求めるのは栄光ではなく、逃れることのできない過去への贖罪であり、闇への一歩ごとに彼の意志は固まっていく。' },
+            'rogue': { name: '盗賊', description: '裏路地と囁きの子供で、彼にとって影は外套であり、秘密は通貨である。彼は信じられないほどの幸運と突然の忘却の間の刃の上を歩き、何よりも自分の直感を信じている。' },
+            'scholar': { name: '学者', description: '知識が禁じられるべきではないと信じる、隠遁した記録保管者の教団からの追放者。鋭い頭脳と忘れられた伝承の断片を武器に、他人が廃墟しか見ない場所にパターンと経路を見出す。' }
         },
         'es': {
-            chapter_title: "Un título de capítulo corto y evocador para el segmento actual de la historia.",
-            story: "La siguiente parte de la narrativa de la historia. Mantenla en 2-4 frases.",
-            health: "La salud actual del jugador.",
-            inventory: "Una matriz de objetos que representa el inventario actual del jugador.",
-            equipment: "Un objeto que representa los objetos equipados por el jugador.",
-            luck: "El valor de suerte actual del jugador, de 0 a 100.",
-            suggested_actions: "Una matriz de tres objetos de acción sugeridos para el jugador, cada uno con una acción y una pista.",
-            game_over: "Establecer en verdadero si el jugador muere o la historia llega a un final definitivo.",
-            win: "Establecer en verdadero si el jugador completa con éxito la aventura.",
-            mood: "Una etiqueta que describe la atmósfera de la escena para la música de fondo.",
-            action_result: "Una clasificación del resultado de la acción del jugador.",
-            item_description: "Una descripción o texto de ambientación para el objeto.",
-            item_slot: "Solo aplicable para el tipo 'equippable'",
-            item_quantity: "Solo aplicable para el tipo 'consumable'",
-            action_text: "El texto de la acción sugerida (1-5 palabras)",
-            action_hint: "Una breve pista sobre el resultado potencial de esta acción"
+            'knight': { name: 'Caballero', description: 'Un remanente de una orden olvidada, atado por un juramento y vestido con acero maltrecho. No busca la gloria, sino la redención de un pasado del que no puede escapar, su voluntad se endurece con cada paso en la oscuridad.' },
+            'rogue': { name: 'Pícaro', description: 'Un hijo de los callejones y los susurros, para quien las sombras son una capa y los secretos son moneda. Camina por el filo de la navaja entre una fortuna increíble y el olvido repentino, confiando en sus instintos por encima de todo.' },
+            'scholar': { name: 'Erudito', description: 'Un exiliado de una orden enclaustrada de archivistas, que cree que ningún conocimiento debería ser prohibido. Armado con una mente aguda y fragmentos de saber olvidado, ve patrones y caminos donde otros solo ven ruinas.' }
         },
         'ko': {
-            chapter_title: "현재 이야기 부분에 대한 짧고 인상적인 챕터 제목.",
-            story: "이야기 서술의 다음 부분입니다. 2-4 문장으로 유지하세요.",
-            health: "플레이어의 현재 체력.",
-            inventory: "플레이어의 현재 인벤토리를 나타내는 객체 배열.",
-            equipment: "플레이어의 장착 아이템을 나타내는 객체.",
-            luck: "플레이어의 현재 행운 값, 0에서 100까지.",
-            suggested_actions: "각각 행동과 힌트가 포함된 세 개의 제안된 플레이어 행동 객체 배열.",
-            game_over: "플레이어가 죽거나 이야기가 명확한 끝에 도달하면 true로 설정합니다.",
-            win: "플레이어가 모험을 성공적으로 완료하면 true로 설정합니다.",
-            mood: "배경 음악을 위한 장면의 분위기를 설명하는 태그.",
-            action_result: "플레이어 행동 결과의 분류.",
-            item_description: "아이템에 대한 설명 또는 풍미 텍스트.",
-            item_slot: "'equippable' 유형에만 적용 가능",
-            item_quantity: "'consumable' 유형에만 적용 가능",
-            action_text: "제안된 행동 텍스트 (1-5 단어)",
-            action_hint: "이 행동의 잠재적 결과에 대한 간략한 힌트"
-        }
+            'knight': { name: '기사', description: '잊혀진 교단의 맹세에 묶인 잔존자로, 낡은 강철 갑옷을 입고 있습니다. 그는 영광이 아닌, 벗어날 수 없는 과거에 대한 구원을 추구하며, 어둠 속으로 한 걸음 내디딜 때마다 그의 의지는 더욱 굳건해집니다.' },
+            'rogue': { name: '도적', description: '뒷골목과 속삭임의 아이로, 그에게 그림자는 망토이고 비밀은 화폐입니다. 그는 놀라운 행운과 갑작스러운 망각 사이의 칼날 위를 걸으며, 무엇보다 자신의 본능을 신뢰합니다.' },
+            'scholar': { name: '학자', description: '어떤 지식도 금지되어서는 안 된다고 믿는, 은둔한 기록 보관자 교단에서 추방된 학자. 예리한 정신과 잊혀진 지식의 파편으로 무장한 그는, 다른 이들이 폐허만 보는 곳에서 패턴과 길을 봅니다.' }
+        },
     };
     
-    return {
-        type: Type.OBJECT,
-        properties: {
-            chapter_title: { type: Type.STRING, description: descriptions[lang].chapter_title },
-            story: { type: Type.STRING, description: descriptions[lang].story },
-            health: { type: Type.INTEGER, description: descriptions[lang].health },
-            inventory: {
-                type: Type.ARRAY,
-                description: descriptions[lang].inventory,
-                items: {
-                    ...ITEM_SCHEMA,
-                    properties: {
-                        ...ITEM_SCHEMA.properties,
-                        description: { type: Type.STRING, description: descriptions[lang].item_description },
-                        slot: { ...(ITEM_SCHEMA.properties.slot), description: descriptions[lang].item_slot },
-                        quantity: { ...(ITEM_SCHEMA.properties.quantity), description: descriptions[lang].item_quantity },
-                    }
-                }
-            },
-            equipment: {
-                type: Type.OBJECT,
-                description: descriptions[lang].equipment,
-                properties: {
-                    head: { ...ITEM_SCHEMA, nullable: true },
-                    body: { ...ITEM_SCHEMA, nullable: true },
-                    hands: { ...ITEM_SCHEMA, nullable: true },
-                    feet: { ...ITEM_SCHEMA, nullable: true },
-                    back: { ...ITEM_SCHEMA, nullable: true },
-                    waist: { ...ITEM_SCHEMA, nullable: true },
-                    companion: { ...ITEM_SCHEMA, nullable: true },
-                }
-            },
-            luck: { type: Type.INTEGER, description: descriptions[lang].luck },
-            suggested_actions: {
-                type: Type.ARRAY,
-                description: descriptions[lang].suggested_actions,
-                items: {
-                    type: Type.OBJECT,
-                    properties: {
-                        action: { type: Type.STRING, description: descriptions[lang].action_text },
-                        hint: { type: Type.STRING, description: descriptions[lang].action_hint },
-                    },
-                    required: ["action", "hint"]
-                }
-            },
-            game_over: { type: Type.BOOLEAN, description: descriptions[lang].game_over },
-            win: { type: Type.BOOLEAN, description: descriptions[lang].win },
-            mood: { type: Type.STRING, enum: ['ambient', 'action', 'tension', 'victory', 'defeat'], description: descriptions[lang].mood },
-            action_result: { type: Type.STRING, enum: ['success', 'failure', 'item_use', 'neutral'], description: descriptions[lang].action_result },
-        },
-        required: ["chapter_title", "story", "health", "inventory", "equipment", "luck", "suggested_actions", "game_over", "win", "mood", "action_result"]
+    translatedBases.forEach((cls: PlayerClass) => {
+        // Translate class name and description
+        if (classTranslations[lang] && classTranslations[lang][cls.id]) {
+            const langCls = classTranslations[lang][cls.id];
+            cls.name = langCls.name;
+            cls.description = langCls.description;
+        }
+
+        // Translate all equipment items
+        for (const slot in cls.initialEquipment) {
+            const item = cls.initialEquipment[slot as keyof EquipmentSlots];
+            if (item) {
+                cls.initialEquipment[slot as keyof EquipmentSlots] = translateItem(item, lang);
+            }
+        }
+        
+        // Translate all inventory items
+        cls.initialInventory = cls.initialInventory.map(item => translateItem(item, lang));
+    });
+
+    return translatedBases.map(createClassWithPrompt);
+}
+
+const generateTricksterForLang = (baseClass: Omit<PlayerClass, 'startingPrompt'>, lang: Language): PlayerClass => {
+    const translatedBase = JSON.parse(JSON.stringify(baseClass));
+    const classTranslations: Record<Language, { name: string, description: string }> = {
+        'zh-TW': { name: '詐欺師', description: '一個化為人形的悖論，也許是某個已死神祇的最後一位弄臣，或是一個說服了自己成真的謊言。他的存在本身就是一場宇宙級的玩笑，意圖與結果鮮有相符，而生存僅僅是一連串荒謬的巧合。' },
+        'ja': { name: 'トリックスター', description: '形を与えられたパラドックス。死んだ神の最後の道化師か、あるいは自らを本物だと信じ込ませた嘘かもしれない。彼の存在は宇宙的な冗談であり、意図と結果が一致することはめったになく、生存は馬鹿げた偶然の問題である。' },
+        'es': { name: 'Embaucador', description: 'Una paradoja hecha forma, que puede ser el último bufón de un dios muerto o una mentira que se convenció a sí misma de que era real. Su existencia es una broma cósmica, donde la intención y el resultado rara vez se alinean, y la supervivencia es una cuestión de coincidencia absurda.' },
+        'ko': { name: '사기꾼', description: '형태를 갖춘 역설. 죽은 신의 마지막 광대이거나, 스스로가 진짜라고 확신시킨 거짓말일지도 모른다. 그의 존재는 우주적인 농담이며, 의도와 결과가 거의 일치하지 않고, 생존은 터무니없는 우연의 문제이다.' },
+        'en': { name: translatedBase.name, description: translatedBase.description }
     };
+
+    // Translate class name and description
+    const langTrickster = classTranslations[lang];
+    if (langTrickster) {
+        translatedBase.name = langTrickster.name;
+        translatedBase.description = langTrickster.description;
+    }
+
+    // Translate all equipment items
+    for (const slot in translatedBase.initialEquipment) {
+        const item = translatedBase.initialEquipment[slot as keyof EquipmentSlots];
+        if (item) {
+            translatedBase.initialEquipment[slot as keyof EquipmentSlots] = translateItem(item, lang);
+        }
+    }
+        
+    // Translate all inventory items
+    translatedBase.initialInventory = translatedBase.initialInventory.map((item: Item) => translateItem(item, lang));
+
+
+    return createClassWithPrompt(translatedBase);
+}
+
+
+export const ALL_PLAYER_CLASSES: Record<Language, PlayerClass[]> = {
+  'en': generateClassesForLang(PLAYER_CLASSES_EN, 'en'),
+  'zh-TW': generateClassesForLang(PLAYER_CLASSES_EN, 'zh-TW'),
+  'ja': generateClassesForLang(PLAYER_CLASSES_EN, 'ja'),
+  'es': generateClassesForLang(PLAYER_CLASSES_EN, 'es'),
+  'ko': generateClassesForLang(PLAYER_CLASSES_EN, 'ko'),
 };
 
-// FIX: Exported RESPONSE_SCHEMAS which was missing and causing an import error.
-export const RESPONSE_SCHEMAS = {
-    'zh-TW': createResponseSchema('zh-TW'),
+export const TRICKSTER_CLASS: Record<Language, PlayerClass> = {
+    'en': generateTricksterForLang(TRICKSTER_CLASS_EN, 'en'),
+    'zh-TW': generateTricksterForLang(TRICKSTER_CLASS_EN, 'zh-TW'),
+    'ja': generateTricksterForLang(TRICKSTER_CLASS_EN, 'ja'),
+    'es': generateTricksterForLang(TRICKSTER_CLASS_EN, 'es'),
+    'ko': generateTricksterForLang(TRICKSTER_CLASS_EN, 'ko'),
+}
+
+export const INITIAL_GAME_STATE: GameState = {
+  story: '',
+  health: 100,
+  inventory: [],
+  equipment: { head: null, body: null, hands: null, feet: null, back: null, waist: null, companion: null },
+  luck: 50,
+  suggestedActions: [],
+  gameOver: false,
+  win: false,
+  mood: 'mysterious',
+  actionResult: 'neutral',
+  turnCount: 0,
+  chapterTitle: 'The Crypt\'s Entrance',
+};
+
+
+const translations: Record<string, Record<Language, string>> = {
+    adventureTitle: { 'en': 'Gemini Adventure: The Whispering Crypt', 'zh-TW': 'Gemini 冒險：低語地穴', 'ja': 'ジェミニの冒険：囁きの地下聖堂', 'es': 'Aventura Gemini: La Cripta Susurrante', 'ko': '제미니 어드벤처: 속삭이는 지하실' },
+    adventureSubtitle: { 'en': 'A Dynamically Generated Text RPG', 'zh-TW': '動態生成文字角色扮演遊戲', 'ja': '動的生成テキストRPG', 'es': 'Un RPG de Texto Generado Dinámicamente', 'ko': '동적으로 생성되는 텍스트 RPG' },
+    introText: { 'en': 'Embark on a unique journey into the Whispering Crypt. Every choice you make shapes a story generated by a powerful AI, creating an infinitely replayable fantasy quest.', 'zh-TW': '踏上深入低語地穴的獨特旅程。你的每一個選擇都會塑造一個由強大AI生成的故事，創造出可無限重玩的奇幻任務。', 'ja': '囁きの地下聖堂へのユニークな旅に出かけましょう。あなたが行うすべての選択が、強力なAIによって生成される物語を形作り、無限にリプレイ可能なファンタジーの探求を創造します。', 'es': 'Embárcate en un viaje único a la Cripta Susurrante. Cada elección que hagas da forma a una historia generada por una poderosa IA, creando una misión de fantasía infinitamente rejugable.', 'ko': '속삭이는 지하실로 독특한 여정을 떠나세요. 당신의 모든 선택은 강력한 AI에 의해 생성된 이야기를 형성하여 무한히 다시 플레이할 수 있는 판타지 퀘스트를 만듭니다.' },
+    loadError: { 'en': 'Failed to load save file. It might be corrupted or in the wrong format.', 'zh-TW': '讀取存檔失敗。檔案可能已損毀或格式不正確。', 'ja': 'セーブファイルの読み込みに失敗しました。ファイルが破損しているか、形式が間違っている可能性があります。', 'es': 'Error al cargar el archivo de guardado. Puede que esté corrupto o en el formato incorrecto.', 'ko': '저장 파일을 불러오는데 실패했습니다. 파일이 손상되었거나 형식이 잘못되었을 수 있습니다.' },
+    enableNarration: { 'en': 'Enable Narration', 'zh-TW': '啟用劇情語音', 'ja': 'ナレーションを有効にする', 'es': 'Habilitar Narración', 'ko': '내레이션 활성화' },
+    voiceSpeed: { 'en': 'Voice Speed', 'zh-TW': '語音速度', 'ja': '読み上げ速度', 'es': 'Velocidad de Voz', 'ko': '음성 속도' },
+    loadGame: { 'en': 'Load Game', 'zh-TW': '讀取進度', 'ja': 'ゲームをロード', 'es': 'Cargar Partida', 'ko': '게임 불러오기' },
+    startAdventure: { 'en': 'Start Adventure', 'zh-TW': '開始冒險', 'ja': '冒険を始める', 'es': 'Comenzar Aventura', 'ko': '모험 시작' },
+    buildingWorld: { 'en': 'Carving the crypt\'s entrance...', 'zh-TW': '正在刻劃地穴的入口...', 'ja': '地下聖堂の入り口を刻んでいます...', 'es': 'Tallando la entrada de la cripta...', 'ko': '지하실 입구를 조각하는 중...' },
+    waitingForFate: { 'en': 'Whispers echo in the dark...', 'zh-TW': '黑暗中傳來低語的回響...', 'ja': '闇に囁きがこだまする...', 'es': 'Los susurros resuenan en la oscuridad...', 'ko': '어둠 속에서 속삭임이 메아리칩니다...' },
+    whatToDo: { 'en': 'What do you do next?', 'zh-TW': '你接下來要做什麼？', 'ja': '次は何をしますか？', 'es': '¿Qué haces ahora?', 'ko': '다음에 무엇을 하시겠습니까?' },
+    saveGame: { 'en': 'Save Progress', 'zh-TW': '儲存進度', 'ja': '進行状況を保存', 'es': 'Guardar Progreso', 'ko': '진행 상황 저장' },
+    submit: { 'en': 'Submit', 'zh-TW': '送出', 'ja': '送信', 'es': 'Enviar', 'ko': '제출' },
+    victoryTitle: { 'en': 'You are Victorious!', 'zh-TW': '你獲得了勝利！', 'ja': '勝利！', 'es': '¡Has logrado la victoria!', 'ko': '승리했습니다!' },
+    defeatTitle: { 'en': 'You have Fallen', 'zh-TW': '你倒下了', 'ja': 'あなたは倒れた', 'es': 'Has Caído', 'ko': '쓰러졌습니다' },
+    victoryText: { 'en': 'The secrets of the Whispering Crypt are yours. Your legend will be sung for ages to come.', 'zh-TW': '低語地穴的秘密已屬於你。你的傳說將被後世傳唱。', 'ja': '囁きの地下聖堂の秘密はあなたのものです。あなたの伝説は後世まで歌い継がれるでしょう。', 'es': 'Los secretos de la Cripta Susurrante son tuyos. Tu leyenda será cantada por los siglos de los siglos.', 'ko': '속삭이는 지하실의 비밀은 당신의 것입니다. 당신의 전설은 오랫동안 노래될 것입니다.' },
+    defeatText: { 'en': 'Your journey ends here, another soul claimed by the Whispering Crypt. Better luck next time.', 'zh-TW': '你的旅程在此結束，又一個靈魂被低語地穴所吞噬。下次好運。', 'ja': 'あなたの旅はここで終わり、また一つ魂が囁きの地下聖堂に奪われました。次回は幸運を。', 'es': 'Tu viaje termina aquí, otra alma reclamada por la Cripta Susurrante. Mejor suerte la próxima vez.', 'ko': '당신의 여정은 여기서 끝났고, 또 다른 영혼이 속삭이는 지하실에 의해 희생되었습니다. 다음엔 행운을 빕니다.' },
+    playAgain: { 'en': 'Play Again', 'zh-TW': '再次遊玩', 'ja': 'もう一度プレイ', 'es': 'Jugar de Nuevo', 'ko': '다시 플레이' },
+    slot_head: { 'en': 'Head', 'zh-TW': '頭部', 'ja': '頭', 'es': 'Cabeza', 'ko': '머리' },
+    slot_body: { 'en': 'Body', 'zh-TW': '身體', 'ja': '胴体', 'es': 'Cuerpo', 'ko': '몸' },
+    slot_hands: { 'en': 'Hands', 'zh-TW': '手部', 'ja': '手', 'es': 'Manos', 'ko': '손' },
+    slot_feet: { 'en': 'Feet', 'zh-TW': '腳部', 'ja': '足', 'es': 'Pies', 'ko': '발' },
+    slot_back: { 'en': 'Back', 'zh-TW': '背部', 'ja': '背中', 'es': 'Espalda', 'ko': '등' },
+    slot_waist: { 'en': 'Waist', 'zh-TW': '腰部', 'ja': '腰', 'es': 'Cintura', 'ko': '허리' },
+    slot_companion: { 'en': 'Companion', 'zh-TW': '夥伴', 'ja': '仲間', 'es': 'Compañero', 'ko': '동료' },
+    health: { 'en': 'Health', 'zh-TW': '生命值', 'ja': '体力', 'es': 'Salud', 'ko': '체력' },
+    luck: { 'en': 'Luck', 'zh-TW': '運氣', 'ja': '運', 'es': 'Suerte', 'ko': '운' },
+    inventory: { 'en': 'Inventory', 'zh-TW': '物品欄', 'ja': '所持品', 'es': 'Inventario', 'ko': '인벤토리' },
+    yourPocketsAreEmpty: { 'en': 'Your pockets are empty.', 'zh-TW': '你的口袋空空如也。', 'ja': 'ポケットは空です。', 'es': 'Tus bolsillos están vacíos.', 'ko': '주머니가 비어 있습니다.' },
+    itemDescription: { 'en': 'Item Description', 'zh-TW': '物品描述', 'ja': 'アイテム説明', 'es': 'Descripción del Objeto', 'ko': '아이템 설명' },
+    chooseOrigin: { 'en': 'Choose Your Origin', 'zh-TW': '選擇你的出身', 'ja': '出自を選択', 'es': 'Elige Tu Origen', 'ko': '당신의 기원을 선택하세요' },
+    originDescription: { 'en': 'Your choice will determine your starting abilities, equipment, and the beginning of your unique story in the Whispering Crypt.', 'zh-TW': '你的選擇將決定你在低語地穴中的初始能力、裝備，以及你獨特故事的開端。', 'ja': 'あなたの選択が、囁きの地下聖堂でのあなたの初期能力、装備、そしてユニークな物語の始まりを決定します。', 'es': 'Tu elección determinará tus habilidades iniciales, equipo y el comienzo de tu historia única en la Cripta Susurrante.', 'ko': '당신의 선택이 속삭이는 지하실에서의 초기 능력, 장비, 그리고 독특한 이야기의 시작을 결정합니다.' },
+    startingEquipment: { 'en': 'Starting Items', 'zh-TW': '初始物品', 'ja': '初期アイテム', 'es': 'Objetos Iniciales', 'ko': '시작 아이템' },
+    embarkJourney: { 'en': 'Enter the Crypt', 'zh-TW': '進入地穴', 'ja': '地下聖堂に入る', 'es': 'Entrar en la Cripta', 'ko': '지하실에 들어가기' },
+};
+
+export const t = (lang: Language, key: string): string => {
+    if (translations[key] && translations[key][lang]) {
+        return translations[key][lang];
+    }
+    // Fallback to English if translation is missing
+    if (translations[key] && translations[key]['en']) {
+        return translations[key]['en'];
+    }
+    return `[${key}]`;
+};
+
+
+// Schemas for Gemini API
+const itemSchema = {
+    type: Type.OBJECT,
+    properties: {
+        name: { type: Type.STRING, description: "The item's name." },
+        type: { type: Type.STRING, enum: ['equippable', 'consumable', 'quest'], description: "The type of item." },
+        description: { type: Type.STRING, description: "A brief, flavorful description of the item." },
+        slot: { type: Type.STRING, enum: ['head', 'body', 'hands', 'feet', 'back', 'waist', 'companion'], nullable: true, description: "If equippable, which slot it occupies." },
+        quantity: { type: Type.INTEGER, nullable: true, description: "For stackable items, how many the player has." },
+    },
+    required: ['name', 'type', 'description']
+};
+
+const createResponseSchema = (language: Language) => {
+  const descriptions: Record<string, Record<Language, string>> = {
+    story: { 'en': "The next part of the story. Should be engaging and descriptive, between 100-200 words, describing the results of the player's action and the new situation.", 'zh-TW': '故事的下一部分。應引人入勝且描述性強，長度在 100-200 字之間，描述玩家行動的結果和新的情境。', 'ja': '物語の次の部分。魅力的で描写的に、プレイヤーの行動の結果と新しい状況を説明する100〜200語の長さでなければなりません。', 'es': 'La siguiente parte de la historia. Debe ser atractiva y descriptiva, de entre 100 y 200 palabras, describiendo los resultados de la acción del jugador y la nueva situación.', 'ko': '이야기의 다음 부분. 플레이어의 행동 결과와 새로운 상황을 설명하는 100-200 단어 길이의 매력적이고 서술적이어야 합니다.' },
+    health: { 'en': "Player's new health points (0-100).", 'zh-TW': '玩家新的生命值 (0-100)。', 'ja': 'プレイヤーの新しい体力（0〜100）。', 'es': 'Nuevos puntos de vida del jugador (0-100).', 'ko': '플레이어의 새로운 체력 포인트 (0-100).' },
+    luck: { 'en': "Player's new luck value (0-100).", 'zh-TW': '玩家新的運氣值 (0-100)。', 'ja': 'プレイヤーの新しい運の値（0〜100）。', 'es': 'Nuevo valor de suerte del jugador (0-100).', 'ko': '플레이어의 새로운 행운 값 (0-100).' },
+    game_over: { 'en': "Set to true if the player has died.", 'zh-TW': '如果玩家死亡，則設置為 true。', 'ja': 'プレイヤーが死亡した場合はtrueに設定します。', 'es': 'Establecer en verdadero si el jugador ha muerto.', 'ko': '플레이어가 사망한 경우 true로 설정하십시오.' },
+    win: { 'en': "Set to true if the player has successfully completed their main quest.", 'zh-TW': '如果玩家成功完成主線任務，則設置為 true。', 'ja': 'プレイヤーがメインクエストを正常に完了した場合はtrueに設定します。', 'es': 'Establecer en verdadero si el jugador ha completado con éxito su misión principal.', 'ko': '플레이어가 주 퀘스트를 성공적으로 완료한 경우 true로 설정하십시오.' },
+    mood: { 'en': "The dominant mood or atmosphere of the current story segment.", 'zh-TW': '當前故事片段的主要情緒或氛圍。', 'ja': '現在の物語のセグメントの主要なムードや雰囲気。', 'es': 'El estado de ánimo o la atmósfera dominante del segmento actual de la historia.', 'ko': '현재 이야기 세그먼트의 지배적인 분위기 또는 분위기.' },
+    action_result: { 'en': "The immediate outcome of the player's last action.", 'zh-TW': '玩家上一個動作的直接結果。', 'ja': 'プレイヤーの最後のアクションの直接の結果。', 'es': 'El resultado inmediato de la última acción del jugador.', 'ko': '플레이어의 마지막 행동의 즉각적인 결과.' },
+    chapter_title: { 'en': "A short, evocative title for the current chapter or major story beat.", 'zh-TW': '為當前章節或主要故事節點取一個簡短、富有感染力的標題。', 'ja': '現在の章または主要なストーリービートの短く、喚起的なタイトル。', 'es': 'Un título corto y evocador para el capítulo actual o el punto principal de la historia.', 'ko': '현재 챕터 또는 주요 스토리 비트에 대한 짧고 연상적인 제목.' },
+  };
+
+  const t_schema = (key: string) => descriptions[key]?.[language] || descriptions[key]?.['en'] || key;
+  
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      story: { type: Type.STRING, description: t_schema('story') },
+      health: { type: Type.INTEGER, description: t_schema('health') },
+      inventory: {
+        type: Type.ARRAY,
+        items: itemSchema,
+        description: t_schema('inventory'),
+      },
+      equipment: {
+        type: Type.OBJECT,
+        properties: {
+            head: { ...itemSchema, nullable: true },
+            body: { ...itemSchema, nullable: true },
+            hands: { ...itemSchema, nullable: true },
+            feet: { ...itemSchema, nullable: true },
+            back: { ...itemSchema, nullable: true },
+            waist: { ...itemSchema, nullable: true },
+            companion: { ...itemSchema, nullable: true },
+        },
+        description: t_schema('equipment')
+      },
+      luck: { type: Type.INTEGER, description: t_schema('luck') },
+      suggested_actions: {
+          type: Type.ARRAY,
+          items: {
+              type: Type.OBJECT,
+              properties: {
+                  action: { type: Type.STRING },
+                  hint: { type: Type.STRING },
+              },
+              required: ['action', 'hint']
+          },
+          description: t_schema('suggested_actions')
+      },
+      game_over: { type: Type.BOOLEAN, description: t_schema('game_over') },
+      win: { type: Type.BOOLEAN, description: t_schema('win') },
+      mood: { type: Type.STRING, enum: ['mysterious', 'tense', 'eerie', 'action', 'triumphant', 'somber', 'neutral'], description: t_schema('mood') },
+      action_result: { type: Type.STRING, enum: ['success', 'failure', 'neutral', 'item_use', 'companion_save'], description: t_schema('action_result') },
+      chapter_title: { type: Type.STRING, description: t_schema('chapter_title') }
+    },
+    required: ['story', 'health', 'inventory', 'equipment', 'luck', 'suggested_actions', 'game_over', 'win', 'mood', 'action_result', 'chapter_title']
+  };
+
+  return schema;
+};
+
+export const RESPONSE_SCHEMAS: Record<Language, any> = {
     'en': createResponseSchema('en'),
+    'zh-TW': createResponseSchema('zh-TW'),
     'ja': createResponseSchema('ja'),
     'es': createResponseSchema('es'),
     'ko': createResponseSchema('ko'),
 };
+
+export const SYSTEM_INSTRUCTION = (language: Language) => `You are an expert game master for a dark fantasy text-based RPG called "The Whispering Crypt". Your goal is to create a dynamic, engaging, and coherent story with a consistent, eerie tone.
+- Language: All responses MUST be in the language code: ${language}.
+- World: The setting is a haunted, ancient crypt filled with traps, puzzles, undead monsters, and forgotten spirits. The atmosphere should be tense and mysterious.
+- Storytelling: Weave a compelling narrative. Describe locations, creatures, and events vividly. Your story text should be between 100-200 words per turn.
+- Three-Act Structure: You must follow a three-act narrative structure based on the current turn count to ensure the story has a clear progression.
+  - Act I (Turns 1-10): The Beginning. Focus on exploration, establishing the eerie atmosphere, and presenting initial, smaller-scale challenges and mysteries.
+  - Act II (Turns 11-25): The Rising Action. Increase the stakes. Introduce more significant threats, more complex puzzles, and reveal parts of the crypt's central secret or antagonist. The challenges should become more difficult.
+  - Act III (Turns 26+): The Climax. Build towards a final confrontation. The player should be facing the ultimate source of the crypt's evil or solving the final, greatest puzzle. This is the epic conclusion of their journey.
+- Player Agency: The player's choices are paramount. Always react to their actions logically within the game world. Provide three diverse and interesting suggested actions that fit the current situation.
+- Game Mechanics:
+    - Health: Max 100. Decreases from damage. If it reaches 0, check for companion save. If no save, set game_over to true.
+    - Luck: Max 100. Influences the outcome of risky actions. A high luck stat should result in more 'success' results.
+    - Companions: Each class starts with a companion. If the player's health would drop to 0 or below, their companion sacrifices itself. Set the companion slot to null, restore the player's health to a small amount (e.g., 10-20), set action_result to 'companion_save', and describe the heroic sacrifice in the story. This can only happen once.
+- JSON Output: You MUST respond with a valid JSON object that strictly adheres to the provided schema. Do not include any text or markdown formatting outside of the JSON object.
+`;

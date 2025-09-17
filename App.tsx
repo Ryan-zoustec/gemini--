@@ -1,378 +1,234 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GameState, Item, EquipmentSlot, PlayerClass, Language } from './types';
-import { INITIAL_GAME_STATE, PLAYER_CLASSES_BY_LANG, t } from './constants';
-import { getGameUpdate } from './services/geminiService';
+import React, { useState, useEffect, useCallback } from 'react';
 import StartScreen from './components/StartScreen';
+import CharacterCreationScreen from './components/CharacterCreationScreen';
 import GameScreen from './components/GameScreen';
 import GameOverScreen from './components/GameOverScreen';
-import CharacterCreationScreen from './components/CharacterCreationScreen';
+import { GameState, PlayerClass, SaveData, Language, Item, EquipmentSlot } from './types';
+import { startNewGame, processPlayerAction } from './services/geminiService';
+import { ALL_PLAYER_CLASSES, TRICKSTER_CLASS, INITIAL_GAME_STATE } from './constants';
 
-const FADE_DURATION = 2000; // 2 seconds for crossfade
-const TRICKSTER_UNLOCK_KEY = 'gemini-adventure-won';
+type Screen = 'start' | 'character' | 'game' | 'gameover';
 
-interface EquipmentChangePayload {
-    action: 'equip' | 'unequip';
-    item: Item;
-    sourceSlot?: EquipmentSlot;
-}
-
-
-function App() {
-  const [currentScreen, setCurrentScreen] = useState<'start' | 'creation' | 'game'>('start');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+const App: React.FC = () => {
+  const [currentScreen, setCurrentScreen] = useState<Screen>('start');
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
-  const [error, setError] = useState<string | null>(null);
-  const [isTakingDamage, setIsTakingDamage] = useState<boolean>(false);
-  const [isAudioEnabled, setIsAudioEnabled] = useState<boolean>(false);
-  const [isVoiceoverEnabled, setIsVoiceoverEnabled] = useState<boolean>(false);
-  const [language, setLanguage] = useState<Language>('zh-TW');
-  const [speechRate, setSpeechRate] = useState<number>(1);
   const [playerClass, setPlayerClass] = useState<PlayerClass | null>(null);
-  const [isTricksterUnlocked, setIsTricksterUnlocked] = useState<boolean>(false);
-
-  const audioRef = useRef<{
-    audioMap: { [key: string]: HTMLAudioElement };
-    sfxMap: { [key: string]: HTMLAudioElement };
-  } | null>(null);
-
-  const currentTrackRef = useRef<HTMLAudioElement | null>(null);
-  const prevHealthRef = useRef<number>(gameState.health);
-  const ttsVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
-
-  // Check for Trickster unlock on initial load
-  useEffect(() => {
-    if (localStorage.getItem(TRICKSTER_UNLOCK_KEY) === 'true') {
-      setIsTricksterUnlocked(true);
-    }
-  }, []);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [language, setLanguage] = useState<Language>('zh-TW');
+  const [isVoiceoverEnabled, setIsVoiceoverEnabled] = useState(false);
+  const [speechRate, setSpeechRate] = useState(1);
   
-  // Effect to load speech synthesis voices
-  useEffect(() => {
-    const loadVoices = () => {
-      const voices = window.speechSynthesis.getVoices();
-      if (voices.length > 0) {
-        const preferredVoice = 
-            voices.find(voice => voice.lang === language && voice.name.includes('Google')) || 
-            voices.find(voice => voice.lang === language);
-        ttsVoiceRef.current = preferredVoice || null;
+  // Use localStorage to track wins for unlocking Trickster
+  const hasWonGame = () => localStorage.getItem('hasWonGame') === 'true';
+  const setHasWonGame = () => localStorage.setItem('hasWonGame', 'true');
+
+  const getInitialClasses = (lang: Language): PlayerClass[] => {
+      const baseClasses = ALL_PLAYER_CLASSES[lang];
+      if (hasWonGame()) {
+          return [...baseClasses, TRICKSTER_CLASS[lang]];
       }
-    };
-
-    window.speechSynthesis.onvoiceschanged = loadVoices;
-    loadVoices();
-
-    return () => {
-      window.speechSynthesis.onvoiceschanged = null;
-      window.speechSynthesis.cancel();
-    };
+      return baseClasses;
+  }
+  
+  const [classes, setClasses] = useState<PlayerClass[]>(() => getInitialClasses(language));
+  
+  useEffect(() => {
+    setClasses(getInitialClasses(language));
   }, [language]);
 
-  useEffect(() => {
-    // Pre-create all audio elements for reliability
-    const audioMap: { [key: string]: HTMLAudioElement } = {
-      ambient: new Audio('https://storage.googleapis.com/gemini-adventure-assets/ambient_dungeon.mp3'),
-      action: new Audio('https://storage.googleapis.com/gemini-adventure-assets/action_combat.mp3'),
-      tension: new Audio('https://storage.googleapis.com/gemini-adventure-assets/tension_suspense.mp3'),
-      victory: new Audio('https://storage.googleapis.com/gemini-adventure-assets/victory_fanfare.mp3'),
-      defeat: new Audio('https://storage.googleapis.com/gemini-adventure-assets/defeat_sting.mp3'),
-    };
-    
-    const sfxMap: { [key: string]: HTMLAudioElement } = {
-        success: new Audio('https://storage.googleapis.com/gemini-adventure-assets/sfx_success.mp3'),
-        failure: new Audio('https://storage.googleapis.com/gemini-adventure-assets/sfx_failure.mp3'),
-        item_use: new Audio('https://storage.googleapis.com/gemini-adventure-assets/sfx_item_use.mp3'),
-    };
-
-    // Configure background music
-    Object.values(audioMap).forEach(audio => {
-      audio.loop = true;
-      audio.preload = 'auto';
-    });
-    audioMap.victory.loop = false;
-    audioMap.defeat.loop = false;
-
-    // Configure SFX
-    Object.values(sfxMap).forEach(sfx => {
-        sfx.preload = 'auto';
-    });
-    sfxMap.success.volume = 0.6;
-    sfxMap.failure.volume = 0.6;
-    sfxMap.item_use.volume = 0.6;
-
-    audioRef.current = { audioMap, sfxMap };
-  }, []);
-
-  const fadeAudio = useCallback((audio: HTMLAudioElement, targetVolume: number) => {
-    const startVolume = audio.volume;
-    const startTime = Date.now();
-    
-    const fade = () => {
-      const elapsedTime = Date.now() - startTime;
-      const progress = Math.min(elapsedTime / FADE_DURATION, 1);
-      audio.volume = startVolume + (targetVolume - startVolume) * progress;
-
-      if (progress < 1) {
-        requestAnimationFrame(fade);
-      } else {
-        if (targetVolume === 0) {
-          audio.pause();
-        }
+  const speak = useCallback((text: string) => {
+    if ('speechSynthesis' in window && isVoiceoverEnabled) {
+      // Wait for voices to be loaded
+      const voices = window.speechSynthesis.getVoices();
+      if (voices.length === 0) {
+          window.speechSynthesis.onvoiceschanged = () => speak(text);
+          return;
       }
-    };
-    fade();
-  }, []);
 
-  const playSfx = useCallback((key: string) => {
-    if (!isAudioEnabled || !audioRef.current) return;
-    const sfx = audioRef.current.sfxMap[key];
-    if (sfx) {
-      sfx.currentTime = 0; // Rewind to start
-      sfx.play().catch(e => console.error("SFX play failed:", e));
-    }
-  }, [isAudioEnabled]);
-
-  useEffect(() => {
-    // Handle health change visual/audio feedback
-    if (gameState.health < prevHealthRef.current) {
-      setIsTakingDamage(true);
-      playSfx('failure');
-      const timer = setTimeout(() => setIsTakingDamage(false), 500); // Duration of the flash animation
-      
-      // Cleanup timer
-      return () => clearTimeout(timer);
-    }
-    prevHealthRef.current = gameState.health;
-  }, [gameState.health, playSfx]);
-
-  useEffect(() => {
-    // Handle action result SFX
-    switch(gameState.actionResult) {
-      case 'success':
-        playSfx('success');
-        break;
-      case 'item_use':
-        playSfx('item_use');
-        break;
-      // 'failure' is handled by health check to be more reliable
-      case 'neutral':
-      default:
-        break;
-    }
-  }, [gameState.actionResult, playSfx]);
-
-
-  useEffect(() => {
-    if (!isAudioEnabled || !audioRef.current) return;
-
-    // Handle background music
-    const newTrackKey = gameState.gameOver ? (gameState.win ? 'victory' : 'defeat') : gameState.mood;
-    const newTrack = audioRef.current.audioMap[newTrackKey] || audioRef.current.audioMap['ambient'];
-
-    if (currentTrackRef.current !== newTrack) {
-      if (currentTrackRef.current) {
-        fadeAudio(currentTrackRef.current, 0);
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      const voice = voices.find(v => v.lang.startsWith(language)) || voices.find(v => v.lang.startsWith(language.split('-')[0])) || null;
+      if (voice) {
+        utterance.voice = voice;
       }
-      
-      newTrack.currentTime = 0;
-      newTrack.volume = 0;
-      newTrack.play().catch(e => console.error("Audio play failed:", e));
-      fadeAudio(newTrack, 0.5);
-
-      currentTrackRef.current = newTrack;
+      utterance.rate = speechRate;
+      utterance.pitch = 1;
+      window.speechSynthesis.speak(utterance);
     }
-
-  }, [gameState.mood, gameState.gameOver, gameState.win, fadeAudio, isAudioEnabled]);
-
-  const speakStory = useCallback((text: string) => {
-    if (!isVoiceoverEnabled || !text.trim()) return;
-
-    window.speechSynthesis.cancel(); // Stop any previous speech immediately
-
-    // FIX: Corrected typo from SpeechSynthesisUtterterance to SpeechSynthesisUtterance.
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = language;
-    if (ttsVoiceRef.current) {
-      utterance.voice = ttsVoiceRef.current;
-    }
-    utterance.rate = speechRate;
-    utterance.pitch = 1.0; 
-
-    window.speechSynthesis.speak(utterance);
   }, [isVoiceoverEnabled, language, speechRate]);
 
+  useEffect(() => {
+    if (gameState.story) {
+      const latestStoryChunk = gameState.story.split('\n\n>').pop()?.split('\n\n').pop() || '';
+      if (latestStoryChunk) {
+        speak(latestStoryChunk);
+      }
+    }
+  }, [gameState.story, speak]);
 
-  const processAction = useCallback(async (action: string, currentState: GameState, selectedItem: Item | null, lang: Language, pClass: PlayerClass | null) => {
-    setIsLoading(true);
+  const handleStart = (voiceEnabled: boolean, lang: Language, rate: number) => {
+    setLanguage(lang);
+    setIsVoiceoverEnabled(voiceEnabled);
+    setSpeechRate(rate);
+    setCurrentScreen('character');
     setError(null);
+  };
+
+  const handleClassSelect = async (selectedClass: PlayerClass) => {
+    setIsLoading(true);
+    setPlayerClass(selectedClass);
+    setCurrentScreen('game');
     try {
-      const gameUpdate = await getGameUpdate(currentState, action, selectedItem, lang, pClass?.id);
-      
-      speakStory(gameUpdate.story);
-
-      const nextTurnCount = currentState.turnCount >= 5 ? 0 : currentState.turnCount + 1;
-      
+      const newGameState = await startNewGame(selectedClass, language);
       setGameState({
-        story: currentState.story ? `${currentState.story}\n\n${gameUpdate.story}` : gameUpdate.story,
-        chapterTitle: gameUpdate.chapter_title,
-        health: gameUpdate.health,
-        inventory: gameUpdate.inventory,
-        equipment: gameUpdate.equipment,
-        luck: gameUpdate.luck,
-        suggestedActions: gameUpdate.suggested_actions,
-        gameOver: gameUpdate.game_over,
-        win: gameUpdate.win,
-        mood: gameUpdate.mood,
-        actionResult: gameUpdate.action_result,
-        turnCount: nextTurnCount,
+        ...INITIAL_GAME_STATE, // Start fresh
+        ...newGameState,
+        suggestedActions: newGameState.suggested_actions,
+        gameOver: newGameState.game_over,
+        actionResult: newGameState.action_result,
+        chapterTitle: newGameState.chapter_title,
+        turnCount: 1, // Start the count
       });
-
-    } catch (err) {
-      console.error(err);
-      setError(t(lang, 'connectionError'));
+    } catch (e: any) {
+      setError(e.message || 'An unknown error occurred.');
     } finally {
       setIsLoading(false);
     }
-  }, [speakStory]);
-  
-  const handleEquipmentChange = useCallback(({ action, item, sourceSlot }: EquipmentChangePayload) => {
-    setGameState(prevState => {
-        const inventory = [...prevState.inventory];
-        const equipment = { ...prevState.equipment };
+  };
 
-        if (action === 'equip') {
-            if (!item.slot) return prevState;
+  const processAction = async (action: string, selectedItem: Item | null) => {
+    if (!playerClass || isLoading) return;
+    setIsLoading(true);
+    setError(null);
 
-            const itemIndex = inventory.findIndex(i => i.name === item.name);
-            if (itemIndex === -1) return prevState;
+    // Create a temporary state for the API call, so UI doesn't show item used before confirmation
+    const tempGameState = { ...gameState };
+    if (selectedItem?.type === 'consumable') {
+        const newInventory = tempGameState.inventory.map(item =>
+            item.name === selectedItem.name ? { ...item, quantity: (item.quantity || 1) - 1 } : item
+        ).filter(item => (item.quantity || 1) > 0);
+        tempGameState.inventory = newInventory;
+    }
 
-            const [itemToEquip] = inventory.splice(itemIndex, 1);
-            const targetSlot = item.slot;
+    try {
+      const response = await processPlayerAction(tempGameState, playerClass, action, selectedItem, language);
+      
+      const actionLog = `\n\n> ${action}${selectedItem ? ` (${selectedItem.name})` : ''}\n\n`;
+      const newStory = `${gameState.story}${actionLog}${response.story}`;
 
-            if (equipment[targetSlot]) {
-                inventory.push(equipment[targetSlot]!);
-            }
-            equipment[targetSlot] = itemToEquip;
+      // Continuously increment turn count
+      const newTurnCount = gameState.turnCount + 1;
 
-        } else if (action === 'unequip' && sourceSlot) {
-            if (!equipment[sourceSlot] || equipment[sourceSlot]?.name !== item.name) return prevState;
+      const newGameState: GameState = {
+        ...response,
+        story: newStory,
+        suggestedActions: response.suggested_actions,
+        gameOver: response.game_over,
+        actionResult: response.action_result,
+        chapterTitle: response.chapter_title,
+        turnCount: newTurnCount,
+      };
+      setGameState(newGameState);
 
-            const [itemToUnequip] = [equipment[sourceSlot]];
-            equipment[sourceSlot] = null;
-            inventory.push(itemToUnequip!);
-        }
+      if (response.win) {
+        setHasWonGame();
+      }
 
-        return { ...prevState, inventory, equipment };
-    });
-  }, []);
+      if (response.game_over || response.win) {
+        setCurrentScreen('gameover');
+      }
+    } catch (e: any) {
+      setError(e.message || 'An unknown error occurred.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const handleStartGame = useCallback((voiceEnabled: boolean, lang: Language, rate: number) => {
-    setIsVoiceoverEnabled(voiceEnabled);
-    setLanguage(lang);
-    setSpeechRate(rate);
-    setCurrentScreen('creation');
-  }, []);
-
-  // FIX: Renamed function to handleClassSelect to match component prop, resolving a likely logic error.
-  const handleClassSelect = useCallback(async (selectedClass: PlayerClass) => {
-    const initialState: GameState = {
-        ...INITIAL_GAME_STATE,
-        health: selectedClass.initialHealth,
-        luck: selectedClass.initialLuck,
-        inventory: selectedClass.initialInventory,
-        equipment: selectedClass.initialEquipment,
+  const handleSave = () => {
+    if (!playerClass) return;
+    const saveData: SaveData = {
+      gameState,
+      playerClass,
+      language,
+      isVoiceoverEnabled,
+      speechRate,
     };
-    
-    setPlayerClass(selectedClass);
-    setIsAudioEnabled(true);
+    const blob = new Blob([JSON.stringify(saveData, null, 2)], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `whispering-crypt-save-${Date.now()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleLoad = (saveData: SaveData) => {
+    setGameState(saveData.gameState);
+    setPlayerClass(saveData.playerClass);
+    setLanguage(saveData.language);
+    setIsVoiceoverEnabled(saveData.isVoiceoverEnabled);
+    setSpeechRate(saveData.speechRate);
+    setClasses(getInitialClasses(saveData.language)); // Make sure to update classes on load
     setCurrentScreen('game');
-
-    await processAction(selectedClass.startingPrompt, initialState, null, language, selectedClass);
-  }, [processAction, language]);
-
-  const handleSubmitAction = useCallback((action: string, selectedItem: Item | null) => {
-    if (!action.trim()) return;
-    processAction(action, gameState, selectedItem, language, playerClass);
-  }, [gameState, processAction, language, playerClass]);
+    setError(null);
+  };
 
   const handleRestart = () => {
-    if (currentTrackRef.current) {
-      fadeAudio(currentTrackRef.current, 0);
-      currentTrackRef.current = null;
-    }
-    window.speechSynthesis.cancel();
     setGameState(INITIAL_GAME_STATE);
+    setPlayerClass(null);
     setCurrentScreen('start');
     setError(null);
-    setIsAudioEnabled(false);
-    setIsVoiceoverEnabled(false);
-    setLanguage('zh-TW');
-    setSpeechRate(1);
-    setPlayerClass(null);
+    setIsLoading(false);
   };
   
-  const handleTricksterSessionUnlock = useCallback(() => {
-    if (!isTricksterUnlocked) {
-        setIsTricksterUnlocked(true);
-    }
-  }, [isTricksterUnlocked]);
+  const handleUnlockTrickster = () => {
+    setClasses(prevClasses => {
+        const hasTrickster = prevClasses.some(c => c.id === 'trickster');
+        if (!hasTrickster) {
+            return [...prevClasses, TRICKSTER_CLASS[language]];
+        }
+        return prevClasses;
+    });
+  };
 
-  const renderContent = () => {
+  const renderScreen = () => {
     switch (currentScreen) {
-      case 'start':
-        return <StartScreen onStart={handleStartGame} />;
-      
-      case 'creation':
-        const visibleClasses = isTricksterUnlocked 
-            ? PLAYER_CLASSES_BY_LANG[language] 
-            : PLAYER_CLASSES_BY_LANG[language].filter(c => c.id !== 'trickster');
-
-        return <CharacterCreationScreen 
-            classes={visibleClasses} 
-            onSelectClass={handleClassSelect}
-            language={language}
-            onUnlockTrickster={handleTricksterSessionUnlock}
-        />;
-
+      case 'character':
+        return <CharacterCreationScreen classes={classes} onSelectClass={handleClassSelect} language={language} onUnlockTrickster={handleUnlockTrickster} />;
       case 'game':
-        if (gameState.gameOver) {
-          if (gameState.win && !isTricksterUnlocked) {
-            localStorage.setItem(TRICKSTER_UNLOCK_KEY, 'true');
-            setIsTricksterUnlocked(true);
-          }
-          return <GameOverScreen 
-            win={gameState.win} 
-            onRestart={handleRestart} 
-            finalStory={gameState.story}
-            language={language}
-          />;
+        if (!playerClass) {
+          handleRestart();
+          return null;
         }
         return (
-          <GameScreen 
-            gameState={gameState} 
-            isLoading={isLoading} 
-            error={error} 
-            onSubmitAction={handleSubmitAction}
-            onEquipmentChange={handleEquipmentChange}
-            actionResult={gameState.actionResult}
+          <GameScreen
+            gameState={gameState}
+            isLoading={isLoading}
+            error={error}
+            onSubmitAction={processAction}
+            onSave={handleSave}
             language={language}
-            playerClassName={playerClass?.name || ''}
+            playerClassName={playerClass.name}
             chapterTitle={gameState.chapterTitle}
           />
         );
-      
+      case 'gameover':
+        return <GameOverScreen win={gameState.win} onRestart={handleRestart} language={language} />;
+      case 'start':
       default:
-        return null;
+        return <StartScreen onStart={handleStart} onLoad={handleLoad} />;
     }
   };
 
   return (
-    <main className="min-h-screen w-full flex items-center justify-center p-4 bg-slate-900">
-      {isTakingDamage && <div className="fixed inset-0 z-50 pointer-events-none animate-damage-flash"></div>}
-      <div className="w-full max-w-6xl mx-auto">
-        {renderContent()}
-      </div>
-    </main>
+    <div className="bg-slate-900 text-white min-h-screen flex items-center justify-center font-sans p-4">
+      <div className="absolute inset-0 bg-grid-slate-800 [mask-image:linear-gradient(to_bottom,white_20%,transparent_100%)]"></div>
+      <main className="z-10 w-full max-w-7xl mx-auto">
+        {renderScreen()}
+      </main>
+    </div>
   );
-}
+};
 
 export default App;

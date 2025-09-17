@@ -65,3 +65,11 @@ export interface PlayerClass {
   initialInventory: Item[];
   startingPrompt: string;
 }
+
+export interface SaveData {
+  gameState: GameState;
+  playerClass: PlayerClass;
+  language: Language;
+  isVoiceoverEnabled: boolean;
+  speechRate: number;
+}

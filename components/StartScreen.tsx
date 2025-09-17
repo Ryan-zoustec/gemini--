@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Language } from '../types';
+import React, { useState, useRef } from 'react';
+import { Language, SaveData } from '../types';
 import { t } from '../constants';
 
 interface StartScreenProps {
   onStart: (voiceEnabled: boolean, lang: Language, rate: number) => void;
+  onLoad: (saveData: SaveData) => void;
 }
 
 const languages: { code: Language; name: string }[] = [
@@ -14,16 +15,52 @@ const languages: { code: Language; name: string }[] = [
     { code: 'ko', name: '한국어' },
 ];
 
-const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
+const StartScreen: React.FC<StartScreenProps> = ({ onStart, onLoad }) => {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [language, setLanguage] = useState<Language>('zh-TW');
   const [rate, setRate] = useState(1);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const text = e.target?.result as string;
+            if (!text) throw new Error("File is empty");
+            const saveData = JSON.parse(text) as SaveData;
+            // Basic validation
+            if (saveData.gameState && saveData.playerClass && saveData.language) {
+                onLoad(saveData);
+            } else {
+                throw new Error("Invalid save file format");
+            }
+        } catch (error) {
+            console.error("Failed to load save file:", error);
+            setLoadError(t(language, 'loadError'));
+        }
+    };
+    reader.onerror = () => {
+        setLoadError(t(language, 'loadError'));
+    };
+    reader.readAsText(file);
+    
+    event.target.value = '';
+  };
+
 
   return (
-    <div className="text-center bg-black/30 backdrop-blur-sm p-8 rounded-lg shadow-2xl shadow-cyan-500/10 border border-slate-700">
+    <div className="text-center bg-black/30 backdrop-blur-sm p-8 rounded-lg shadow-2xl shadow-cyan-500/10 border border-slate-700 max-w-4xl mx-auto">
       <h1 className="text-5xl font-bold text-cyan-400 mb-4 tracking-wider">{t(language, 'adventureTitle')}</h1>
       <h2 className="text-3xl text-slate-300 mb-6">{t(language, 'adventureSubtitle')}</h2>
-      <p className="text-slate-400 max-w-2xl mx-auto mb-8">
+      <p className="text-slate-400 max-w-3xl mx-auto mb-8">
         {t(language, 'introText')}
       </p>
 
@@ -71,12 +108,29 @@ const StartScreen: React.FC<StartScreenProps> = ({ onStart }) => {
         </div>
       )}
 
-      <button
-        onClick={() => onStart(voiceEnabled, language, rate)}
-        className="bg-cyan-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-cyan-500 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-cyan-500/20 text-xl"
-      >
-        {t(language, 'startAdventure')}
-      </button>
+      {loadError && <p className="text-red-400 mb-4">{loadError}</p>}
+
+      <div className="flex flex-col items-center gap-4">
+        <button
+            onClick={() => onStart(voiceEnabled, language, rate)}
+            className="bg-cyan-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-cyan-500 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-cyan-500/20 text-xl"
+        >
+            {t(language, 'startAdventure')}
+        </button>
+         <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept=".txt"
+            style={{ display: 'none' }}
+        />
+         <button
+            onClick={handleLoadClick}
+            className="text-slate-400 hover:text-cyan-400 transition-colors text-sm underline"
+        >
+            {t(language, 'loadGame')}
+        </button>
+      </div>
     </div>
   );
 };
