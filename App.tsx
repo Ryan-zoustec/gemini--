@@ -1,11 +1,12 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import StartScreen from './components/StartScreen';
 import CharacterCreationScreen from './components/CharacterCreationScreen';
 import GameScreen from './components/GameScreen';
 import GameOverScreen from './components/GameOverScreen';
 import { GameState, PlayerClass, SaveData, Language, Item, AIModel } from './types';
-import { startNewGame, processPlayerAction } from './services/aiService';
-import { ALL_PLAYER_CLASSES, TRICKSTER_CLASS, INITIAL_GAME_STATE } from './constants';
+import { startNewGame, processPlayerAction, generateIllustration as generateIllustrationApi } from './services/aiService';
+import { ALL_PLAYER_CLASSES, TRICKSTER_CLASS, INITIAL_GAME_STATE, t } from './constants';
 
 type Screen = 'start' | 'character' | 'game' | 'gameover';
 
@@ -14,6 +15,7 @@ const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(INITIAL_GAME_STATE);
   const [playerClass, setPlayerClass] = useState<PlayerClass | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [language, setLanguage] = useState<Language>('zh-TW');
   const [isVoiceoverEnabled, setIsVoiceoverEnabled] = useState(false);
@@ -61,9 +63,20 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (gameState.story) {
-      const latestStoryChunk = gameState.story.split('\n\n>').pop()?.split('\n\n').pop() || '';
-      if (latestStoryChunk) {
-        speak(latestStoryChunk);
+      const storyTurns = gameState.story.split('\n\n>');
+      const latestTurnContent = storyTurns[storyTurns.length - 1];
+
+      if (storyTurns.length === 1) {
+        // This is the initial story load, which has no player action prefix. Read the whole thing.
+        speak(latestTurnContent);
+      } else {
+        // This is a subsequent turn. The content will be "Player Action\n\nStory from AI...".
+        // We want to read everything after the first paragraph (the action).
+        const contentParts = latestTurnContent.split('\n\n');
+        const storyToRead = contentParts.slice(1).join('\n\n');
+        if (storyToRead) {
+          speak(storyToRead);
+        }
       }
     }
   }, [gameState.story, speak]);
@@ -100,7 +113,7 @@ const App: React.FC = () => {
     try {
       const newGameState = await startNewGame(selectedClass, language, aiModel);
       setGameState({
-        ...INITIAL_GAME_STATE, // Start fresh
+        ...INITIAL_GAME_STATE, // Start fresh, this includes illustrations: {}
         ...newGameState,
         suggestedActions: newGameState.suggested_actions,
         gameOver: newGameState.game_over,
@@ -146,6 +159,7 @@ const App: React.FC = () => {
         actionResult: response.action_result,
         chapterTitle: response.chapter_title,
         turnCount: newTurnCount,
+        illustrations: gameState.illustrations, // Carry over existing illustrations
       };
       setGameState(newGameState);
 
@@ -160,6 +174,30 @@ const App: React.FC = () => {
       setError(e.message || 'An unknown error occurred.');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const handleGenerateIllustration = async () => {
+    if (isGeneratingImage || isLoading) return;
+    setIsGeneratingImage(true);
+    setError(null);
+    
+    try {
+        const latestStoryChunk = gameState.story.split('>').pop() || gameState.story;
+        const prompt = `${t(language, 'illustrationPromptStyle')} A ${playerClass?.name || 'adventurer'} in a dark crypt. ${latestStoryChunk}`;
+        const imageUrl = await generateIllustrationApi(prompt, language, aiModel);
+        
+        setGameState(prevState => ({
+          ...prevState,
+          illustrations: {
+            ...prevState.illustrations,
+            [prevState.turnCount]: imageUrl, // Associate with current turn
+          }
+        }));
+    } catch (e: any) {
+        setError(e.message || t(language, 'illustrationError'));
+    } finally {
+        setIsGeneratingImage(false);
     }
   };
 
@@ -186,7 +224,10 @@ const App: React.FC = () => {
     // Prime the speech engine on user click to enable autoplay on iOS
     primeSpeechSynthesis(saveData.isVoiceoverEnabled);
 
-    setGameState(saveData.gameState);
+    setGameState({
+        ...saveData.gameState,
+        illustrations: saveData.gameState.illustrations || {}, // Ensure illustrations object exists
+    });
     setPlayerClass(saveData.playerClass);
     setLanguage(saveData.language);
     setIsVoiceoverEnabled(saveData.isVoiceoverEnabled);
@@ -234,10 +275,12 @@ const App: React.FC = () => {
             language={language}
             playerClassName={playerClass.name}
             chapterTitle={gameState.chapterTitle}
+            isGeneratingImage={isGeneratingImage}
+            onGenerateIllustration={handleGenerateIllustration}
           />
         );
       case 'gameover':
-        return <GameOverScreen win={gameState.win} onRestart={handleRestart} language={language} />;
+        return <GameOverScreen win={gameState.win} onRestart={handleRestart} language={language} story={gameState.story} />;
       case 'start':
       default:
         return <StartScreen onStart={handleStart} onLoad={handleLoad} />;

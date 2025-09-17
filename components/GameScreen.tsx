@@ -1,9 +1,7 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { GameState, Item, Language } from '../types';
 import PlayerStats from './PlayerStats';
 import LoadingIcon from './LoadingIcon';
-import { generateIllustration } from '../services/aiService';
 import { t } from '../constants';
 
 interface GameScreenProps {
@@ -15,6 +13,8 @@ interface GameScreenProps {
   language: Language;
   playerClassName: string;
   chapterTitle: string;
+  isGeneratingImage: boolean;
+  onGenerateIllustration: () => void;
 }
 
 const GameScreen: React.FC<GameScreenProps> = ({
@@ -25,26 +25,19 @@ const GameScreen: React.FC<GameScreenProps> = ({
   onSave,
   language,
   playerClassName,
-  chapterTitle
+  chapterTitle,
+  isGeneratingImage,
+  onGenerateIllustration
 }) => {
   const [customAction, setCustomAction] = useState('');
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const storyContainerRef = useRef<HTMLDivElement>(null);
-  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [illustrationUrl, setIllustrationUrl] = useState<string | null>(null);
-  const [illustrationError, setIllustrationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (storyContainerRef.current) {
       storyContainerRef.current.scrollTop = storyContainerRef.current.scrollHeight;
     }
-  }, [gameState.story]);
-
-  // Reset illustration when story changes
-  useEffect(() => {
-    setIllustrationUrl(null);
-    setIllustrationError(null);
-  }, [gameState.story]);
+  }, [gameState.story, gameState.illustrations, isGeneratingImage]);
 
 
   const handleSubmit = (action: string) => {
@@ -58,31 +51,55 @@ const GameScreen: React.FC<GameScreenProps> = ({
     e.preventDefault();
     handleSubmit(customAction);
   };
-  
-  const handleGenerateIllustration = async () => {
-    if (isGeneratingImage) return;
-    setIsGeneratingImage(true);
-    setIllustrationUrl(null);
-    setIllustrationError(null);
-    
-    try {
-        // We take the latest story part for the prompt.
-        const latestStoryChunk = gameState.story.split('>').pop() || gameState.story;
-        const prompt = `${t(language, 'illustrationPromptStyle')} A ${playerClassName} in a dark crypt. ${latestStoryChunk}`;
-        const imageUrl = await generateIllustration(prompt, language, 'gemini');
-        setIllustrationUrl(imageUrl);
-    } catch (err: any) {
-        setIllustrationError(t(language, 'illustrationError'));
-    } finally {
-        setIsGeneratingImage(false);
-    }
-  };
 
+  const renderStory = () => {
+    // Split the story into turns. The first element is the narrative for turn 1.
+    const storyTurns = gameState.story.split('\n\n>');
+
+    return storyTurns.map((turnContent, index) => {
+      const turnNumber = index + 1;
+      const illustrationForTurn = gameState.illustrations?.[turnNumber];
+      
+      let actionParagraph: React.ReactNode = null;
+      let narrativeParagraphs: string[] = [];
+
+      if (index > 0) {
+        // For turns after the first, the content includes the player's action.
+        const parts = turnContent.split('\n\n');
+        const actionText = parts[0];
+        actionParagraph = (
+            <p className="mb-4 text-cyan-300 italic pl-4 border-l-2 border-cyan-700 text-base md:text-lg leading-relaxed">
+                {actionText}
+            </p>
+        );
+        narrativeParagraphs = parts.slice(1);
+      } else {
+        // This is the first turn (initial story)
+        narrativeParagraphs = turnContent.split('\n\n');
+      }
+
+      return (
+        <React.Fragment key={turnNumber}>
+          {actionParagraph}
+          {narrativeParagraphs.map((paragraph, pIndex) => (
+             <p key={`${turnNumber}-${pIndex}`} className="mb-4 text-slate-300 text-base md:text-lg leading-relaxed">
+                 {paragraph}
+             </p>
+          ))}
+          {illustrationForTurn && (
+              <div className="my-4 border border-cyan-700/50 rounded-lg overflow-hidden shadow-lg shadow-cyan-900/50 animate-fade-in">
+                  <img src={illustrationForTurn} alt={`Illustration for turn ${turnNumber}`} className="w-full h-auto object-cover"/>
+              </div>
+          )}
+        </React.Fragment>
+      );
+    });
+  };
 
   return (
     <div className="flex flex-col md:flex-row gap-4 h-[90vh] max-h-[900px] w-full">
-      {/* Left Panel: Game Info & Player Stats */}
-      <div className="md:w-1/3 lg:w-1/4 flex flex-col gap-4">
+      {/* Left Panel: Game Info & Player Stats (Scrollable on mobile) */}
+      <div className="md:w-1/3 lg:w-1/4 flex flex-col gap-4 overflow-y-auto md:overflow-y-visible">
         <div className="bg-slate-900/50 p-4 rounded-lg border border-slate-700 text-center">
             <h2 className="text-2xl font-bold text-cyan-400">{chapterTitle}</h2>
             <p className="text-slate-400">Turn: {gameState.turnCount}</p>
@@ -105,29 +122,15 @@ const GameScreen: React.FC<GameScreenProps> = ({
       {/* Right Panel: Story and Actions */}
       <div className="md:w-2/3 lg:w-3/4 flex flex-col bg-black/30 backdrop-blur-sm rounded-lg shadow-2xl shadow-cyan-500/10 border border-slate-700 overflow-hidden">
         {/* Story Display */}
-        <div ref={storyContainerRef} className="flex-grow p-6 overflow-y-auto story-content relative">
-            {illustrationUrl && (
-              <div className="mb-4 border border-cyan-700/50 rounded-lg overflow-hidden shadow-lg shadow-cyan-900/50">
-                <img src={illustrationUrl} alt="Generated illustration of the scene" className="w-full h-auto object-cover"/>
-              </div>
-            )}
+        <div ref={storyContainerRef} className="flex-grow p-3 md:p-6 overflow-y-auto story-content relative min-h-20">
+            {renderStory()}
             {isGeneratingImage && (
-              <div className="mb-4 h-64 flex flex-col items-center justify-center bg-slate-800/50 border border-slate-700 rounded-lg">
+              <div className="my-4 h-64 flex flex-col items-center justify-center bg-slate-800/50 border border-slate-700 rounded-lg">
                 <LoadingIcon />
                 <p className="mt-2 text-slate-400">{t(language, 'generatingIllustration')}</p>
               </div>
             )}
-            {illustrationError && (
-                 <div className="mb-4 p-3 text-center bg-red-900/50 border border-red-700 rounded-lg">
-                    <p className="text-red-300">{illustrationError}</p>
-                </div>
-            )}
-          {gameState.story.split('\n\n').map((paragraph, index) => (
-            <p key={index} className={`mb-4 text-slate-300 text-lg leading-relaxed ${paragraph.startsWith('>') ? 'text-cyan-300 italic pl-4 border-l-2 border-cyan-700' : ''}`}>
-              {paragraph.replace(/^>\s*/, '')}
-            </p>
-          ))}
-          {isLoading && !gameState.story && (
+            {isLoading && !gameState.story && (
              <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/80">
                 <LoadingIcon />
                 <p className="mt-4 text-xl text-slate-300">{t(language, 'buildingWorld')}</p>
@@ -136,7 +139,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
         </div>
 
         {/* Action Panel */}
-        <div className="p-4 border-t border-slate-700 bg-slate-900/50">
+        <div className="p-3 md:p-4 border-t border-slate-700 bg-slate-900/50">
            {error && <p className="text-red-400 mb-2 text-center">{error}</p>}
            {isLoading && (
               <div className="flex items-center justify-center p-4">
@@ -147,22 +150,22 @@ const GameScreen: React.FC<GameScreenProps> = ({
 
           {!isLoading && (
             <>
-              <h3 className="text-lg font-bold text-slate-300 mb-3 text-center">{t(language, 'whatToDo')}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <h3 className="text-base md:text-lg font-bold text-slate-300 mb-3 text-center">{t(language, 'whatToDo')}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 md:gap-3 mb-3">
                 {gameState.suggestedActions.map(({ action, hint }) => (
                   <button
                     key={action}
                     onClick={() => handleSubmit(action)}
-                    className="bg-slate-700 text-slate-200 p-3 rounded-lg text-left transition-colors hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-slate-700 text-slate-200 p-2 md:p-3 rounded-lg text-left transition-colors hover:bg-slate-600 focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
                     disabled={isLoading}
                     title={hint}
                   >
-                    <span className="font-semibold">{action}</span>
+                    <span className="font-semibold text-sm md:text-base">{action}</span>
                     <span className="block text-xs text-slate-400 mt-1">{hint}</span>
                   </button>
                 ))}
               </div>
-              <form onSubmit={handleCustomActionSubmit} className="flex gap-3">
+              <form onSubmit={handleCustomActionSubmit} className="flex gap-2 md:gap-3">
                 <input
                   type="text"
                   value={customAction}
@@ -173,7 +176,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
                 />
                 <button
                   type="submit"
-                  className="bg-cyan-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-cyan-500 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
+                  className="bg-cyan-600 text-white font-bold py-2 px-4 md:px-6 rounded-lg hover:bg-cyan-500 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
                   disabled={isLoading || !customAction.trim()}
                 >
                   {t(language, 'submit')}
@@ -182,7 +185,7 @@ const GameScreen: React.FC<GameScreenProps> = ({
             </>
           )}
            <div className="mt-4 flex justify-center gap-4">
-               <button onClick={handleGenerateIllustration} disabled={isGeneratingImage || isLoading} className="text-slate-400 hover:text-cyan-400 transition-colors text-sm underline disabled:opacity-50 disabled:cursor-not-allowed">
+               <button onClick={onGenerateIllustration} disabled={isGeneratingImage || isLoading} className="text-slate-400 hover:text-cyan-400 transition-colors text-sm underline disabled:opacity-50 disabled:cursor-not-allowed">
                    {isGeneratingImage ? t(language, 'generatingIllustration') : t(language, 'generateIllustration')}
                </button>
                 <button onClick={onSave} disabled={isLoading} className="text-slate-400 hover:text-cyan-400 transition-colors text-sm underline disabled:opacity-50">

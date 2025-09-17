@@ -40,6 +40,7 @@ export interface GameState {
   actionResult: string;
   turnCount: number;
   chapterTitle: string;
+  illustrations: Record<number, string>; // Map turn count to image URL
 }
 
 export interface GameUpdateResponse {

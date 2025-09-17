@@ -1,4 +1,5 @@
 
+
 import { GameState, PlayerClass, GameUpdateResponse, Language, Item, AIModel } from '../types';
 import { callGeminiApi, generateImage as generateGeminiImage } from './geminiService';
 
@@ -26,7 +27,9 @@ export const startNewGame = async (
         mood: 'mysterious',
         actionResult: 'neutral',
         turnCount: 0, // Turn count will become 1 after this initial generation.
-        chapterTitle: ''
+        chapterTitle: '',
+        // FIX: Add missing 'illustrations' property to satisfy the GameState type.
+        illustrations: {}
     };
 
     // The starting prompt is defined in the player class constants.

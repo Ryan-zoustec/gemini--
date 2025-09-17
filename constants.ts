@@ -21,6 +21,7 @@ export const INITIAL_GAME_STATE: GameState = {
   actionResult: 'neutral',
   turnCount: 0,
   chapterTitle: '',
+  illustrations: {},
 };
 
 // --- ENGLISH PLAYER CLASSES ---

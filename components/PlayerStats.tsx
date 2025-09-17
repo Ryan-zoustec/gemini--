@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Item, EquipmentSlots, EquipmentSlot, Language } from '../types';
@@ -95,19 +93,19 @@ const EquipmentSlotComponent: React.FC<{
 
     const isCompanionSlot = slot === 'companion';
     const baseClasses = `bg-slate-700/50 rounded-lg flex items-center justify-center border-2 border-dashed transition-colors relative p-1`;
-    const sizeClasses = isCompanionSlot ? "h-28 w-28" : "h-20 w-20";
+    const sizeClasses = isCompanionSlot ? "h-20 w-20 md:h-28 md:w-28" : "h-16 w-16 md:h-20 md:w-20";
     const stateClasses = item ? "border-slate-500 bg-slate-700" : "border-slate-600";
     const slotName = t(language, `slot_${slot}`);
     
-    const slotNamePosition = 'top-1.5 left-0 right-0 text-center';
+    const slotNamePosition = 'top-1 md:top-1.5 left-0 right-0 text-center';
     
     const content = item ? (
-      <div className={`flex flex-col items-center text-center text-xs justify-center h-full pt-4`}>
+      <div className={`flex flex-col items-center text-center justify-center h-full pt-3 md:pt-4`}>
         {getIconForItem(item)}
-        <span className="text-slate-300 w-full break-words leading-tight mt-1 px-1">{item.name}</span>
+        <span className="text-slate-300 w-full break-words leading-tight mt-1 px-1 text-[10px] md:text-xs">{item.name}</span>
       </div>
     ) : (
-      <div className="text-slate-500 pt-4">{icons[slot]}</div>
+      <div className="text-slate-500 pt-3 md:pt-4">{icons[slot]}</div>
     );
 
     return (
@@ -117,7 +115,7 @@ const EquipmentSlotComponent: React.FC<{
             onMouseMove={onMouseMove}
             className={`${baseClasses} ${sizeClasses} ${stateClasses} ${isCompanionSlot ? 'rounded-full' : ''}`}
         >
-            <span className={`absolute text-sm text-slate-400 font-semibold ${slotNamePosition}`}>{slotName}</span>
+            <span className={`absolute text-xs md:text-sm text-slate-400 font-semibold ${slotNamePosition}`}>{slotName}</span>
             {content}
         </div>
     );
@@ -186,40 +184,40 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
   return (
     <div className="space-y-4 text-sm h-full flex flex-col">
         {/* Health and Luck bars */}
-        <div className="bg-slate-900/50 p-3 rounded-lg border border-slate-700">
+        <div className="bg-slate-900/50 p-2 md:p-3 rounded-lg border border-slate-700">
           <div className="flex items-center justify-between mb-1">
               <div className="flex items-center">
                 <HealthIcon isLow={isHealthLow} />
-                <span className="font-bold text-slate-300 text-lg">{t(language, 'health')}</span>
+                <span className="font-bold text-slate-300 text-base md:text-lg">{t(language, 'health')}</span>
               </div>
-              <span className="font-mono text-lg text-slate-300">{health}/{maxHealth}</span>
+              <span className="font-mono text-base md:text-lg text-slate-300">{health}/{maxHealth}</span>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-4 border border-slate-600"><div className={`h-full rounded-full transition-all duration-500 ${healthColor}`} style={{ width: `${healthPercentage}%` }}></div></div>
         </div>
-        <div className={`bg-slate-900/50 p-3 rounded-lg border border-slate-700 ${luckAnim}`}>
+        <div className={`bg-slate-900/50 p-2 md:p-3 rounded-lg border border-slate-700 ${luckAnim}`}>
           <div className="flex items-center justify-between mb-1">
             <div className="flex items-center">
                 <LuckIcon />
-                <span className="font-bold text-slate-300 text-lg">{t(language, 'luck')}</span>
+                <span className="font-bold text-slate-300 text-base md:text-lg">{t(language, 'luck')}</span>
             </div>
-             <span className="font-mono text-lg text-slate-300">{luck}/100</span>
+             <span className="font-mono text-base md:text-lg text-slate-300">{luck}/100</span>
           </div>
           <div className="w-full bg-slate-700 rounded-full h-4 border border-slate-600"><div className="h-full rounded-full transition-all duration-500 bg-green-400" style={{ width: `${luck}%` }}></div></div>
         </div>
 
         {/* Equipment */}
-        <div className="bg-slate-900/50 p-3 rounded-lg flex flex-col items-center space-y-2 border border-slate-700">
+        <div className="bg-slate-900/50 p-2 md:p-3 rounded-lg flex flex-col items-center space-y-2 border border-slate-700">
             <div className="flex items-center justify-center mb-2 w-full border-b border-slate-700 pb-2">
                 {classIcons[playerClassName] || <KnightIconClass />}
-                <h3 className="text-2xl font-bold text-slate-200 tracking-wider">{playerClassName}</h3>
+                <h3 className="text-xl md:text-2xl font-bold text-slate-200 tracking-wider">{playerClassName}</h3>
             </div>
             {renderEquipmentSlot('companion')}
-            <div className="flex gap-2">
+            <div className="flex gap-1 md:gap-2">
                 {renderEquipmentSlot('head')}
                 {renderEquipmentSlot('body')}
                 {renderEquipmentSlot('hands')}
             </div>
-             <div className="flex gap-2">
+             <div className="flex gap-1 md:gap-2">
                 {renderEquipmentSlot('back')}
                 {renderEquipmentSlot('waist')}
                 {renderEquipmentSlot('feet')}
@@ -227,12 +225,12 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
         </div>
 
         {/* Inventory */}
-        <div className={`flex-grow bg-slate-900/50 p-3 rounded-lg border border-slate-700 ${inventoryAnim}`}>
+        <div className={`flex-grow bg-slate-900/50 p-2 md:p-3 rounded-lg border border-slate-700 ${inventoryAnim}`}>
           <div className="flex items-center mb-2">
               <InventoryIcon />
-              <span className="font-bold text-slate-300 ml-2 text-lg">{t(language, 'inventory')}</span>
+              <span className="font-bold text-slate-300 ml-2 text-base md:text-lg">{t(language, 'inventory')}</span>
           </div>
-          <div className="flex flex-wrap gap-2 min-h-[5rem] content-start">
+          <div className="flex flex-wrap gap-1 md:gap-2 min-h-[5rem] content-start">
             {inventory.length > 0 ? (
               inventory.map((item, index) => (
                 <div
