@@ -1,5 +1,5 @@
 export type ItemType = 'equippable' | 'consumable' | 'quest';
-export type EquipmentSlot = 'head' | 'body' | 'hands' | 'feet' | 'back' | 'waist';
+export type EquipmentSlot = 'head' | 'body' | 'hands' | 'feet' | 'back' | 'waist' | 'companion';
 
 export interface Item {
   name: string;
@@ -17,6 +17,7 @@ export interface EquipmentSlots {
   feet: Item | null;
   back: Item | null;
   waist: Item | null;
+  companion: Item | null;
 }
 
 export interface SuggestedAction {

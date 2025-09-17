@@ -37,11 +37,25 @@ const BeltIcon = () => <svg {...iconProps}><path d="M10 4H4a2 2 0 0 0-2 2v10a2 2
 const GenericItemIcon = () => <svg {...iconProps}><rect x="1" y="7" width="22" height="14" rx="2" ry="2"></rect><path d="M3 7V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v2"></path><path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"></path></svg>;
 const InventoryIcon = () => <svg {...iconProps}><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M12 3v4"></path><path d="M16 3v4"></path><path d="M8 3v4"></path></svg>;
 
+// --- Companion Icons ---
+const CompanionHeartIcon = () => <svg {...iconProps}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>;
+const GuardianIcon = () => <svg {...iconProps}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>;
+const PerceptionIcon = () => <svg {...iconProps}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>;
+const EnergyIcon = () => <svg {...iconProps}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>;
+
+
 const getIconForItem = (item: Item | null): React.ReactElement => {
     if (!item) return <GenericItemIcon />;
     const name = item.name.toLowerCase();
     const type = item.type;
     const slot = item.slot;
+
+    if (slot === 'companion') {
+        if (name.includes('犬')) return <GuardianIcon />;
+        if (name.includes('梟')) return <PerceptionIcon />;
+        if (name.includes('精靈')) return <EnergyIcon />;
+        return <CompanionHeartIcon />;
+    }
 
     if (slot === 'head' || name.includes('頭盔') || name.includes('帽')) return <HelmetIcon />;
     if (slot === 'body' || name.includes('甲') || name.includes('袍')) return <ArmorIcon />;
@@ -74,6 +88,7 @@ const EquipmentSlotComponent: React.FC<{
         feet: <BootsIcon />,
         back: <BackpackIcon />,
         waist: <BeltIcon />,
+        companion: <CompanionHeartIcon />,
     };
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -119,7 +134,7 @@ const EquipmentSlotComponent: React.FC<{
             onMouseEnter={(e) => onMouseEnter(e, item)}
             onMouseLeave={onMouseLeave}
             onMouseMove={onMouseMove}
-            className={`${baseClasses} ${stateClasses} ${item ? 'cursor-grab' : ''}`}
+            className={`${baseClasses} ${stateClasses} ${item ? 'cursor-grab' : ''} ${slot === 'companion' ? 'rounded-full' : ''}`}
         >
             {content}
         </div>
@@ -221,6 +236,8 @@ const PlayerStats: React.FC<PlayerStatsProps> = ({ health, luck, inventory, equi
       <div className="grid grid-cols-3 gap-3">
         {/* Equipment */}
         <div className="col-span-1 bg-slate-900/50 p-2 rounded-md flex flex-col items-center space-y-2">
+            <EquipmentSlotComponent slot="companion" item={equipment.companion} onDrop={(e) => handleEquipmentDrop(e, 'companion')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>
+            <div className="w-4/5 border-t border-slate-700 my-1"></div>
             <EquipmentSlotComponent slot="head" item={equipment.head} onDrop={(e) => handleEquipmentDrop(e, 'head')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>
             <div className="flex gap-2">
                 <EquipmentSlotComponent slot="hands" item={equipment.hands} onDrop={(e) => handleEquipmentDrop(e, 'hands')} onMouseEnter={handleMouseEnter} {...commonMouseEventHandlers}/>

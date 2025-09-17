@@ -256,6 +256,7 @@ function App() {
     setCurrentScreen('creation');
   }, []);
 
+  // FIX: Renamed function to handleClassSelect to match component prop, resolving a likely logic error.
   const handleClassSelect = useCallback(async (selectedClass: PlayerClass) => {
     const initialState: GameState = {
         ...INITIAL_GAME_STATE,
@@ -295,7 +296,6 @@ function App() {
         return <StartScreen onStart={handleStartGame} />;
       
       case 'creation':
-        // FIX: Corrected function name from handleSelectClass to handleClassSelect
         return <CharacterCreationScreen classes={PLAYER_CLASSES} onSelectClass={handleClassSelect} />;
 
       case 'game':
